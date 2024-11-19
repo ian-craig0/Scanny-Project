@@ -443,6 +443,8 @@ class setupClass(ctk.CTkFrame):
          self.SL_scrollable_frame._scrollbar.configure(width=25)
          self.SL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
 
+
+
          #Setup period list frame (make a function to populate on each open) 2
          self.period_list_frame = ctk.CTkFrame(self)
          self.period_list_frame.grid(row=0, column=0, sticky='nsew')
@@ -452,25 +454,116 @@ class setupClass(ctk.CTkFrame):
          self.PL_scrollable_frame._scrollbar.configure(width=25)
          self.PL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
 
+
+
+
          #Setup schedule options frame (change commands based on schedule selected) 3
          self.schedule_options_frame = ctk.CTkFrame(self)
          self.schedule_options_frame.grid(row=0, column=0, sticky='nsew')
+
+         #TOP FRAME CREATION (SCHEDULE OPTIONS)
+         self.SO_top_frame = ctk.CTkFrame(self.schedule_options_frame, border_width=4,border_color='white')
+         self.SO_top_frame.pack(side='top',fill='x')
+         self.SOTF_title_label = ctk.CTkLabel(self.SO_top_frame, font=('Space Grotesk', 30, 'bold'))
+         self.SOTF_title_label.pack(anchor='center', pady=20)
+
+         #BOTTOM FRAME CREATION (SCHEDULE OPTIONS)
+         self.SO_lower_container_frame = ctk.CTkFrame(self.schedule_options_frame)
+         self.SO_lower_container_frame.pack(side='top',fill='both',expand=True)
+         self.SO_lower_container_frame.columnconfigure(0, weight=1)
+         self.SO_lower_container_frame.columnconfigure(1, weight=1)
+         self.SO_lower_container_frame.rowconfigure(0, weight=1)
+         self.SO_lower_container_frame.rowconfigure(1, weight=1)
+         self.SO_lower_container_frame.rowconfigure(2, weight=1)
+
+         #BOTTOM FRAME OPTION BUTTONS (SCHEDULE OPTIONS)
+         self.SO_LC_periods_button = ctk.CTkButton(self.SO_lower_container_frame, width=200, height = 90, text='Edit Periods', font=('Space Grotesk', 24, 'bold'))
+         self.SO_LC_periods_button.grid(column=0, row = 1, padx=(0,30))
+         self.SO_LC_edit_schedule_button = ctk.CTkButton(self.SO_lower_container_frame, width=200, height=90, text='Edit Schedule', font=('Space Grotesk', 24, 'bold'))
+         self.SO_LC_edit_schedule_button.grid(column=1, row = 1, padx=(30,0))
+
+
+
 
          #Setup new/edit schedule frame (clear on submit, input name and minutes, change title and submit button/display schedule type or not) 4
          self.schedule_info_frame = ctk.CTkFrame(self)
          self.schedule_info_frame.grid(row=0, column=0, sticky='nsew')
 
+         #TOP FRAME CREATION (SCHEDULES)
+         self.SI_top_frame = ctk.CTkFrame(self.schedule_info_frame, border_width=4,border_color='white')
+         self.SI_top_frame.pack(side='top',fill='x')
+         self.STF_title_label = ctk.CTkLabel(self.SI_top_frame, font=('Space Grotesk', 30, 'bold'))
+         self.STF_title_label.pack(anchor='center', pady=20)
+
+         #BOTTOM FRAME CREATION (SCHEDULES)
+         self.SI_lower_container_frame = ctk.CTkFrame(self.schedule_info_frame)
+         self.SI_lower_container_frame.pack(side='top',fill='both',expand=True)
+         self.SI_lower_container_frame.rowconfigure(0, weight=1)
+         self.SI_lower_container_frame.rowconfigure(1, weight=1)
+         self.SI_lower_container_frame.rowconfigure(2, weight=1)
+
+         #NAME FRAME ----------------
+         self.SI_name_frame = ctk.CTkFrame(self.SI_lower_container_frame)
+         self.SI_name_frame.grid(column=0, row=0, sticky='nsew', expand=True)
+         self.SI_name_label = ctk.CTkLabel(self.SI_name_frame, text = "Name:", font = ('Space Grotesk', 18, 'bold'))
+         self.SI_name_label.pack(side='left', anchor='nw', padx=10, pady=5)
+         self.SI_name_entry = ctk.CTkEntry(self.SI_name_frame, placeholder_text='Enter schedule name...', placeholder_font= ('Space Grotesk', 16), height = 60, width = 280)
+         self.SI_name_entry.pack(side='left', padx=5, pady=5)
+
+         #Schedule and Absence Frame
+
+         #SCHEDULE TYPE SELECITON
+         self.schedule_dict = {'Block':1, 'Traditional':0}
+
+         self.SI_schedule_absence_frame = ctk.CTkFrame(self.SI_lower_container_frame)
+         self.SI_schedule_absence_frame.grid(column=0, row=1, sticky='nsew', expand=True)
+
+         #SCHEDULE FRAME
+         self.SI_schedule_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
+         self.SI_schedule_label = ctk.CTkLabel(self.SI_schedule_frame, text = "Schedule Type:", font = ('Space Grotesk', 18, 'bold'))
+         self.SI_schedule_label.pack(padx=10,pady=5,side='left')
+         self.SI_schedule_combobox = ctk.CTkComboBox(self.SI_schedule_frame, values = ['Block', 'Traditional'], dropdown_font=('Space Grotesk', 16), dropdown_text_color='gray', height = 70, width=200)
+         self.SI_schedule_combobox.pack(padx=5,pady=5,side='left')
+
+         #ABSENCE FRAME
+         self.SI_absence_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
+         self.SI_AF_minute_var= ctk.StringVar(value = '30')
+
+         self.SI_AF_title_label = ctk.CTkLabel(self.SI_absence_frame, text = "Absence Threshold\n(minutes)", font = ('Space Grotesk', 17, 'bold'))
+         self.SI_AF_title_label.grid(row=0, column=0,padx=5,pady=5)
+         self.SI_AF_value_label = ctk.CTkLabel(self.SI_absence_frame, text=f"{self.SI_AF_minute_var.get()}")
+         self.SI_AF_value_label.grid(row=1,column=0,padx=5,pady=5)
+
+         #ABSENCE MINUTE SELECTORS
+         self.PI_RF_tardy_minute_up = ctk.CTkButton(self.SI_absence_frame, text="↑", command = lambda: self.change_minute(self.SI_AF_minute_var, +1))
+         self.PI_RF_tardy_minute_up.grid(row=0, column=1,pady=5,padx=5)
+         self.PI_RF_tardy_minute_down = ctk.CTkButton(self.SI_absence_frame, text="↓", command = lambda: self.change_minute(self.SI_AF_minute_var, -1))
+         self.PI_RF_tardy_minute_down.grid(row=1, column=1,pady=5,padx=5)
+
+         #ABSENCE UPDATE LABEL CODE
+         self.SI_AF_minute_var.trace_add("write", self.SI_AF_value_label.configure(text=f"{self.SI_AF_minute_var.get()}"))
+
+
+         #SUBMIT SCHEDULE FRAME
+         self.SI_submit_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
+         self.SI_submit_frame.grid(column=0, row=2, sticky='nsew', expand=True)
+         self.SI_submit_button = ctk.CTkButton(self.SI_submit_frame, width=300, height = 70)
+         self.SI_submit_button.pack(anchor='center')
+
+
+
+
          #Setup new/edit period frame (input details or not/change title and submit button/display A or B or not) CLEAR ON SUBMIT 5
          self.period_info_frame = ctk.CTkFrame(self)
          self.period_info_frame.grid(row=0, column=0, sticky='nsew')
 
-         #TOP FRAME CREATION
+         #TOP FRAME CREATION (PERIODS)
          self.PI_top_frame = ctk.CTkFrame(self.period_info_frame, border_width=4,border_color='white')
          self.PI_top_frame.pack(side='top',fill='x')
-         self.TF_title_label = ctk.CTkLabel(self.PI_top_frame, font=('Space Grotesk', 30, 'bold'))
-         self.TF_title_label.pack(anchor='center', pady=20)
+         self.PTF_title_label = ctk.CTkLabel(self.PI_top_frame, font=('Space Grotesk', 30, 'bold'))
+         self.PTF_title_label.pack(anchor='center', pady=20)
 
-         #BOTTOM FRAME CREATION
+         #BOTTOM FRAME CREATION (PERIODS)
          self.PI_lower_container_frame = ctk.CTkFrame(self.period_info_frame)
          self.PI_lower_container_frame.pack(side='top',fill='both',expand=True)
          self.PI_lower_container_frame.columnconfigure(0, weight=1)
@@ -572,10 +665,16 @@ class setupClass(ctk.CTkFrame):
          self.PI_RF_tardy_minute_var.trace_add("write", self.PI_RF_tardy_value_label.configure(text=f"{self.PI_RF_tardy_minute_var.get()}"))
 
 
+
          #Setup weekday frame (make a function populate schedule list on each open and weekdays on each selection) 6
          self.select_weekdays_frame = ctk.CTkFrame(self)
          self.select_weekdays_frame.grid(row=0, column=0, sticky='nsew')
 
+
+
+         #Setup student assignment frame (specific to each period) 7
+         self.student_period_selection_frame = ctk.CTkFrame(self)
+         self.student_period_selection_frame.grid(row=0, column=0, sticky='nsew')
 
 
 
@@ -601,6 +700,8 @@ class setupClass(ctk.CTkFrame):
                  self.period_info_frame.lift()
              if new_tab == 6:
                  self.select_weekdays_frame.lift()
+             if new_tab == 7:
+                 self.student_period_selection_frame.lift()
              self.control_frame.lift()
              self.exit_button.lift()
              self.current_tab = new_tab
@@ -613,15 +714,15 @@ class setupClass(ctk.CTkFrame):
             schedule_frame.columnconfigure(0, weight=3)
             schedule_frame.columnconfigure(1, weight=1)
 
-            ctk.CTkButton(schedule_frame, text=schedule_info[1].title(), bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 20, 'bold'), command = lambda: self.display_period_list(schedule_info[0])).grid(row=0, column=0, sticky='nsew')
+            ctk.CTkButton(schedule_frame, text=schedule_info[1].title(), bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 20, 'bold'), command = lambda: self.display_schedule_options(schedule_info[0], schedule_info[1])).grid(row=0, column=0, sticky='nsew')
             ctk.CTkButton(schedule_frame, text='', image=self.deleteImage, bg_color='white', border_width=4, border_color='white', compound = 'center',command = lambda: self.delete_schedule(schedule_info[0])).grid(row=0, column=1, sticky='nsew')
 
             schedule_frame.grid(row=index, column=0, sticky='ew', padx=5, pady=5)
 
-     def populate_period_list(self, schedule_ID):
+     def populate_period_list(self, schedule_ID, name):
         for widget in self.PL_scrollable_frame.winfo_children():
             widget.destroy()
-        self.PL_scrollable_frame.configure(label_text=f"Edit Periods: {getFromSchedules("select name from schedules where schedule_ID = %s", (schedule_ID,), True)[0]}")
+        self.PL_scrollable_frame.configure(label_text=f"Edit Periods: {name.title()}")
         periods = getFromPeriods("select period_ID, name from periods where schedule_ID = %s ORDER by start_time ASC", (schedule_ID,))
         for index, period_info in enumerate(periods):
             period_frame = ctk.CTkFrame(self.PL_scrollable_frame, height= 60,fg_color="#1f6aa5", bg_color='white', border_width=4, border_color='white')
@@ -647,14 +748,14 @@ class setupClass(ctk.CTkFrame):
                 if period_ID:
                     #SET SEGMENTED BUTTON VALUE
                     self.PI_LF_daytype_segmented_button.set(callMultiple(get_period_info_curs,"select block_val from periods where period_ID = %s", (period_ID,), True)[0])
-             self.PI_LF_submit_button.configure(command = lambda: self.submit_period(period_ID))
+             self.PI_LF_submit_button.configure(command = lambda: self.submit_period(schedule_ID, period_ID))
              self.PI_LF_submit_button.pack(anchor='center',pady=(20,20))
 
              #INPUT DATA IF EDITING
              if period_ID:
                  #SET LABELS
                  name = callMultiple(get_period_info_curs,"select name from periods where period_ID = %s", (period_ID,), True)[0]
-                 self.TF_title_label.configure(text='Edit Period: ' + name)
+                 self.PTF_title_label.configure(text='Edit Period: ' + name)
                  self.PI_LF_submit_button.configure(text='Submit Edits')
                  #SET PERIOD NAME
                  self.PI_LF_period_entry.insert(0, name)
@@ -665,9 +766,9 @@ class setupClass(ctk.CTkFrame):
                  self.PI_RF_start_minute_var.set(f"{(start_time%60):02d}")
                  self.PI_RF_end_hour_var.set(f"{(end_time//60):02d}")
                  self.PI_RF_end_minute_var.set(f"{(end_time%60):02d}")
-                 self.PI_RF_tardy_minute_var.set(str(late_var))
+                 self.PI_RF_tardy_minute_var.set(f"{(str(late_var)):02d}")
              else:
-                 self.TF_title_label.configure(text='Create New Period')
+                 self.PTF_title_label.configure(text='Create New Period')
                  self.PI_LF_submit_button.configure(text='+ Create Period +')
 
      def delete_schedule(self, schedule_ID):
@@ -676,14 +777,37 @@ class setupClass(ctk.CTkFrame):
      def delete_period(self, period_ID):
          #delete period logic
 
-     def display_period_list(self, schedule_ID):
+     def display_period_list(self, schedule_ID, name):
         self.tabSwap(2)
-        self.populate_period_list(schedule_ID)
+        self.populate_period_list(schedule_ID, name)
 
      def display_period_info(self, schedule_ID, period_ID = None):
         #turn on edit mode for period_ID
         self.tabSwap(5)
         self.populate_period_info(schedule_ID, period_ID)
+
+     def display_schedule_options(self, schedule_ID, name):
+         self.SOTF_title_label.configure(text=name.title())
+         self.SO_LC_periods_button.configure(command= lambda: self.display_period_list(schedule_ID, name))
+         self.SO_LC_edit_schedule_button.configure(command = lambda: self.display_schedule_info(schedule_ID, name))
+         tabSwap(3)
+
+     def display_schedule_info(self, schedule_ID, name = None):
+         if name: #IF WERE EDITING SCHEDULE
+             self.STF_title_label.configure(text=f"Edit Schedule: {name}")
+             self.SI_name_entry.insert(0, name)
+             #ADD ABSENCE FRAME
+             self.SI_AF_minute_var.set(f"{(str(getFromSchedules("select absent_var from schedules where schedule_ID = %s", (schedule_ID,), True)[0])):02d}")
+             self.SI_absence_frame.pack(anchor='center')
+             self.SI_submit_button.configure(text='Submit Edits')
+         else: #IF WE ARE CREATING NEW SCHEDULE
+             self.STF_title_label.configure(text='New Schedule:')
+             self.SI_schedule_frame.pack(side='left', anchor='center')
+             self.SI_absence_frame.pack(side='left', anchor='center')
+             self.SI_submit_button.configure(text='+ Create Schedule +')
+         self.SI_submit_button.configure(command = lambda: self.submit_schedule(schedule_ID, name))
+
+         tabSwap(4)
 
      def change_hour(self, var, delta):
          current_hour = int(var.get())
@@ -695,7 +819,32 @@ class setupClass(ctk.CTkFrame):
          new_minute = (current_minute + delta) % 60
          var.set(f"{new_minute:02d}")
 
-     def submit_period(self, period_ID):
+     def submit_schedule(self, schedule_ID, edit):
+         #HIDE SCHEDULE AND ABSENT BUTTONS
+         self.SI_schedule_frame.pack_forget()
+         self.SI_absence_frame.pack_forget()
+
+         #INPUT SCHEDULE INFO FROM SCHEDULE FRAME
+         name = self.SI_name_entry.get().lower() #GET SCHEDULE NAME
+         self.SI_name_entry.delete(0, 'end') #CLEAR ENTRY
+
+         block = False
+         type = None
+         if edit: #IF SCHEDULE IS ALREADY CREATED, DON'T WORRY ABOUT SCHEDULE TYPE
+             type = self.schedule_dict.get(self.SI_schedule_combobox.get()) #GET SCHEDULE TYPE
+             self.SI_schedule_combobox.set("")
+             block = True
+
+         absent_var = int(self.SI_AF_value_label.cget('text'))
+         self.SI_AF_minute_var.set('30')
+
+         #CONTINUE HERE
+
+
+
+
+
+     def submit_period(self, schedule_ID, period_ID):
          #HIDE BUTTONS
          self.PI_LF_period_label.pack_forget()
          self.PI_LF_period_entry.pack_forget()
@@ -704,7 +853,7 @@ class setupClass(ctk.CTkFrame):
          self.PI_LF_submit_button.pack_forget()
 
          #INPUT PERIOD INFO FROM PERIOD FRAME
-         name = self.PI_LF_period_entry.get() #GET NAME ENTRY VALUE
+         name = self.PI_LF_period_entry.get().lower() #GET NAME ENTRY VALUE
          self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
 
          block = False
@@ -714,27 +863,31 @@ class setupClass(ctk.CTkFrame):
             self.PI_LF_daytype_segmented_button.set("")
             block = True
 
-         start_time = self.PI_RF_start_value_label.cget('text')
+         start_time = time_to_minutes(self.PI_RF_start_value_label.cget('text'))
          self.PI_RF_start_hour_var.set("12")
          self.PI_RF_start_minute_var.set("00")
 
-         end_time = self.PI_RF_end_value_label.cget('text')
+         end_time = time_to_minutes(self.PI_RF_end_value_label.cget('text'))
          self.PI_RF_end_hour_var.set("12")
          self.PI_RF_end_minute_var.set("00")
 
-         late_var = self.PI_RF_tardy_value_label.cget('text')
-         self.PI_RF_tardy_minute_var.set('5')
+         late_var = int(self.PI_RF_tardy_value_label.cget('text'))
+         self.PI_RF_tardy_minute_var.set('05')
 
          #CHECK IF EVERYTHING HAS INPUT AND THEN SUBMIT DATA
          if name and start_time and end_time and late_var and (not block or daytype):
+            if not daytype: #IF NO VALUE IS RETURNED (TRADITIONAL SCHEDULE)
+                daytype = '-'
             if period_ID: #EDIT EXISTING PERIOD
-                #go
+                getFromPeriods("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
             else: #ADD NEW PERIOD
-                #go
+                getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
+            tabSwap(2) #GO BACK TO PERIOD LIST FOR THAT SCHEDULE
          else:
              #DISPLAY NEED MORE INPUTS
-
-
+             alreadyChecktitlelabel.configure(text='Missing Period Values!')
+             alreadyChecknoticelabel.configure(text="Please complete all required fields before submitting.")
+             display_popup(alreadyCheckFrame)
 
      def end_setup(self):
          #UPDATE EVERY PERIOD LIST
@@ -1514,14 +1667,14 @@ def hide_popup(popup):
 def update_buttons(new_state, popup = None):
     global currentTAB
     global currentPopup
-    parentDict = {1: periodList,3: historyFrame,4: teacherFrame, 5: setupFrame}
+    parentDict = {1: periodList,3: historyFrame,4: teacherFrame}
 
     if new_state == 'normal':
         currentPopup = None
         combostate = 'readonly'
     else:
         combostate = 'disabled'
-    if currentTAB == 3 or currentTAB == 4 or currentTAB == 5:
+    if currentTAB == 3 or currentTAB == 4:
         if currentTAB == 4:
             teacherFrame.update_scrollableFrame_buttons(new_state)
         for frame in parentDict.get(currentTAB).winfo_children():
