@@ -272,8 +272,8 @@ def timeFunc():
     if currDate != prevDate:
         newDay()
         prevDate = currDate
-    timeLabel.configure(text=strftime('%I:%M:%S %p'))
-    dateLabel.configure(text=strftime("%m-%d-%Y"))
+    timeLabel.configure(text=strftime('%I:%M:%S %p')) #UPDATE TOPBAR WIDGET
+    dateLabel.configure(text=strftime("%m-%d-%Y")) #          v
     current_time = time_to_minutes(strftime("%H:%M"))
     timeLabel.after(1000, timeFunc)
 
@@ -408,7 +408,7 @@ def checkIN():
                     name = ...
                     historyFrame.top_name_menu.set(name)
                     historyFrame.fetch_students()'''
-                elif currentTAB == 4:
+                elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
                     if currentTAB != 6:
                         editStudentData(ID)
                 sleep_ms(100)
@@ -442,6 +442,7 @@ class setupClass(ctk.CTkFrame):
          self.SL_scrollable_frame.grid_propagate(0)
          self.SL_scrollable_frame._scrollbar.configure(width=25)
          self.SL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
+
 
 
 
@@ -511,7 +512,6 @@ class setupClass(ctk.CTkFrame):
          self.SI_name_entry.pack(side='left', padx=5, pady=5)
 
          #Schedule and Absence Frame
-
          #SCHEDULE TYPE SELECITON
          self.schedule_dict = {'Block':1, 'Traditional':0}
 
@@ -584,8 +584,6 @@ class setupClass(ctk.CTkFrame):
 
          self.PI_LF_submit_button = ctk.CTkButton(self.PI_left_frame, width=150, height = 60)
 
-
-
          #RIGHT FRAME (always packed time widgets, make sure to clear/set with editing)
          #START FRAME -------------------------------------------------------------------------------------------
          self.PI_RF_start_frame = ctk.CTkFrame(self.PI_right_frame)
@@ -614,8 +612,6 @@ class setupClass(ctk.CTkFrame):
          self.PI_RF_start_hour_var.trace_add("write", self.PI_RF_start_value_label.configure(text=f"{self.PI_RF_start_hour_var.get()}:{self.PI_RF_start_minute_var.get()}"))
          self.PI_RF_start_minute_var.trace_add("write", self.PI_RF_start_value_label.configure(text=f"{self.PI_RF_start_hour_var.get()}:{self.PI_RF_start_minute_var.get()}"))
 
-
-
          #END FRAME -------------------------------------------------------------------------------------------
          self.PI_RF_end_frame = ctk.CTkFrame(self.PI_right_frame)
          self.PI_RF_end_hour_var = ctk.StringVar(value = '12')
@@ -643,8 +639,6 @@ class setupClass(ctk.CTkFrame):
          self.PI_RF_end_hour_var.trace_add("write", self.PI_RF_end_value_label.configure(text=f"{self.PI_RF_end_hour_var.get()}:{self.PI_RF_end_minute_var.get()}"))
          self.PI_RF_end_minute_var.trace_add("write", self.PI_RF_end_value_label.configure(text=f"{self.PI_RF_end_hour_var.get()}:{self.PI_RF_end_minute_var.get()}"))
 
-
-
          #TARDY FRAME -------------------------------------------------------------------------------------------
          self.PI_RF_tardy_frame = ctk.CTkFrame(self.PI_right_frame)
          self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
@@ -666,10 +660,44 @@ class setupClass(ctk.CTkFrame):
 
 
 
+
+
          #Setup weekday frame (make a function populate schedule list on each open and weekdays on each selection) 6
          self.select_weekdays_frame = ctk.CTkFrame(self)
          self.select_weekdays_frame.grid(row=0, column=0, sticky='nsew')
 
+         #TOP BAR (weekday frame)
+         self.SW_top_frame = ctk.CTkFrame(self.select_weekdays_frame, border_width=4,border_color='white')
+         self.SW_top_frame.pack(side='top',fill='x')
+
+         self.SW_TF_title_frame = ctk.CTkFrame(self.SW_top_frame, height = 100)
+         self.SW_TF_title_frame.pack(fill='x', anchor='center')
+         self.SW_title_label = ctk.CTkLabel(self.SW_top_frame, font=('Space Grotesk', 30, 'bold'))
+         self.SW_title_label.pack(side='left', pady=10,padx=(5, 20))
+
+         #COMBOBOX (updates values every time weekday frame is displayed)
+         self.SW_schedule_dict = {}
+         self.SW_schedule_combobox = ctk.CTkComboBox(self.SW_TF_title_frame, height = 70, dropdown_font=('Space Grotesk', 25, 'bold'), font=('Space Grotesk', 28, 'bold'), command = lambda: self.populate_weekday_frame(self.schedule_dict.get(self.SI_schedule_combobox.get())))
+         self.SW_schedule_combobox.pack(side='left', padx=(20,5))
+
+         #LOWER FRAME CONTAINER (weekday frame)
+         self.SW_lower_container_frame = ctk.CTkFrame(self.select_weekdays_frame)
+         self.SW_lower_container_frame.pack(side='top',fill='both',expand=True)
+
+
+
+
+         #CONTINUE HERE
+
+
+
+
+
+         #WEEKDAY SETUP
+         weekday_list = ("Sunday:", "Monday:", "Tuesday:", "Wednesday:", "Thursday:", "Friday:", "Saturday:")
+         for index, day in enumerate(weekday_list):
+             ctk.CTkLabel(self.SW_lower_container_frame, text = day, font=('Space Grotesk', 19)).grid(column=0, row = index, pady=10)
+             ctk.CTkCheckBox(self.SW_lower_container_frame, width= 50, height=50, command = lambda: self.display_weekday_daytype(index, self.schedule_dict.get(self.SI_schedule_combobox.get()))).grid(column=1, row = index, pady=10)
 
 
          #Setup student assignment frame (specific to each period) 7
@@ -678,13 +706,92 @@ class setupClass(ctk.CTkFrame):
 
 
 
+
+
          #CREATE tab selector frame (make animation logic based on arrow, not a popup, keep separate)
-         self.control_frame = ctk.CTkFrame(self, width = sWidth/5, height=sHeight)
-         self.control_frame.place(x=-200, y=0)
+         #CONTROL VARIABLES
+         self.control_frame_width = sWidth/4
+         self.CF_hidden_visibility_width = self.control_frame_width*.3125
+         self.CF_visible = False
+
+         self.left_image = ctk.CTkImage(light_image=Image.open(), size=(50,50))
+         self.right_image = ctk.CTkImage(light_image=Image.open(), size=(50,50))
+         self.add_image = ctk.CTkImage(light_image=Image.open(), size=(40,40))
+         self.manage_schedules = ctk.CTkImage(light_image=Image.open(), size=(40,40))
+         self.weekday_image = ctk.CTkImage(light_image=Image.open(), size=(40,40))
+
+         #CONTROL FRAME
+         self.control_frame = ctk.CTkFrame(self, width = self.control_frame_width, height=sHeight)
+         self.control_frame.pack_propagate(0)
+         self.control_frame.place(x=-(self.control_frame_width-self.CF_hidden_visibility_width), y=0)
+
+         #CONTROL BUTTONS
+         self.CF_display_button = ctk.CTkButton(self.control_frame, text="", border_width=1, border_color='gray',image = self.right_image,command=self.toggle_control_frame,font=('Space Grotesk', 25, 'bold'),width=self.CF_hidden_visibility_width , height=90, fg_color='#1f6aa5', bg_color='#2b2b2b')
+         self.CF_display_button.pack(side='top',anchor='e',pady=(1,10),padx=1)
+
+         self.create_schedule = ctk.CTkButton(self.control_frame, text='',width = self.control_frame_width/4, height = self.CF_hidden_visibility_width, fg_color='#222222', image = self.add_image, compound='top', command = self.display_schedule_info)
+         self.create_schedule.pack(side='top',anchor='e',pady=(200,30),padx=8)
+
+         self.manage_schedule = ctk.CTkButton(self.control_frame, text='', width = self.control_frame_width/4, height = self.CF_hidden_visibility_width, fg_color='#222222', image = self.manage_schedules, compound='top', command = self.display_schedule_list)
+         self.manage_schedule.pack(side='top',anchor='e',pady=30,padx=8)
+
+         self.weekday_assignment = ctk.CTkButton(self.control_frame, text='', width = self.control_frame_width/4, height = self.CF_hidden_visibility_width, fg_color='#222222', image = self.weekday_image, compound = 'top', command = self.display_weekday_frame)
+         self.weekday_assignment.pack(side='top',anchor='e',pady=30,padx=8)
+
 
          #CREATE exit button (always placed)
-         self.exit_button = ctk.CTkButton(self, text='X', font=("Space Grotesk", 24, 'bold'),command=self.pack_forget())
+         self.exit_button = ctk.CTkButton(self, text='X', font=("Space Grotesk", 24, 'bold'),command=self.exit_schedule_setup)
          self.exit_button.place(relx=.95,rely=.05)
+
+     #CONTROL FRAME MOVEMENT FUNCTIONS
+     def toggle_control_frame(self):
+         if self.CF_visible:
+             self.hide_sidebar()
+         else:
+             self.show_sidebar()
+
+     def show_sidebar(self):
+         self.CF_display_button.configure(image = self.left_image)
+         def animate():
+             x = self.control_frame.winfo_x()
+             if x < 0:
+                 x += 20
+                 new_x = min(x, 0)  # Ensure it doesn't go beyond 0
+                 self.create_schedule.configure(width=(self.control_frame_width - 16) + new_x)
+                 self.manage_schedule.configure(width=(self.control_frame_width - 16) + new_x)
+                 self.weekday_assignment.configure(width=(self.control_frame_width - 16) + new_x)
+                 self.CF_display_button.configure(width=new_x+self.control_frame_width)
+                 self.control_frame.place(x=new_x)
+                 self.after(10, animate)
+             else:
+                 self.sidebar_visible = True
+
+         animate()
+         self.create_schedule.configure(text='Create New Schedule     ', compound='left')
+         self.manage_schedule.configure(text='Manage Existing Schedules  ', compound='left')
+         self.weekday_assignment.configure(text='Weekday assignment', compound='left')
+
+     def hide_sidebar(self):
+         self.CF_display_button.configure(image= self.right_image)
+         def animate():
+             x = self.control_frame.winfo_x()
+             target_x = -(self.control_frame_width-self.CF_hidden_visibility_width )
+             if x > target_x:
+                 x -= 20
+                 new_x = max(x, target_x)  # Ensure it doesn't go beyond hidden position
+                 self.create_schedule.configure(width=(self.control_frame_width - 16) + new_x)
+                 self.manage_schedule.configure(width=(self.control_frame_width - 16) + new_x)
+                 self.weekday_assignment.configure(width=(self.control_frame_width - 16) + new_x)
+                 self.CF_display_button.configure(width=new_x+self.control_frame_width)
+                 self.control_frame.place(x=new_x)
+                 self.after(10, animate)
+             else:
+                 self.sidebar_visible = False
+
+         animate()
+         self.create_schedule.configure(text='', compound='top')
+         self.manage_schedule.configure(text='', compound='top')
+         self.weekday_assignment.configure(text='', compound='top')
 
      def tabSwap(self, new_tab):
          if new_tab != self.current_tab:
@@ -742,17 +849,16 @@ class setupClass(ctk.CTkFrame):
          with db.cursor() as get_period_info_curs:
              self.PI_LF_period_label.pack(side='left',pady=(30,10),padx=10)
              self.PI_LF_period_entry.pack(side='left', fill='x',pady=(5,20), padx=10)
-             if callMultiple(get_period_info_curs,"select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0] == 1:
+             if callMultiple(get_period_info_curs,"select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0] == 1: #IF ITS BLOCK SCHEDULE
                 self.PI_LF_daytype_label.pack(anchor='center',pady=(10,5))
                 self.PI_LF_daytype_segmented_button.pack(anchor='center',pady=(10,20))
-                if period_ID:
+                if period_ID: #IF THE PERIOD ALREADY EXISTS
                     #SET SEGMENTED BUTTON VALUE
                     self.PI_LF_daytype_segmented_button.set(callMultiple(get_period_info_curs,"select block_val from periods where period_ID = %s", (period_ID,), True)[0])
              self.PI_LF_submit_button.configure(command = lambda: self.submit_period(schedule_ID, period_ID))
              self.PI_LF_submit_button.pack(anchor='center',pady=(20,20))
 
-             #INPUT DATA IF EDITING
-             if period_ID:
+             if period_ID: #IF THE PERIOD EXISTS
                  #SET LABELS
                  name = callMultiple(get_period_info_curs,"select name from periods where period_ID = %s", (period_ID,), True)[0]
                  self.PTF_title_label.configure(text='Edit Period: ' + name)
@@ -771,28 +877,43 @@ class setupClass(ctk.CTkFrame):
                  self.PTF_title_label.configure(text='Create New Period')
                  self.PI_LF_submit_button.configure(text='+ Create Period +')
 
+     def populate_weekday_frame(self, schedule_ID):
+         #input whats days are checked and their daytypes from database
+
      def delete_schedule(self, schedule_ID):
          #delete schedule logic
 
      def delete_period(self, period_ID):
          #delete period logic
 
+     def display_weekday_daytype(self, day_number, schedule_ID):
+        #displays A/B/Dynamic option after clicking a checkbox
+
      def display_period_list(self, schedule_ID, name):
-        self.tabSwap(2)
         self.populate_period_list(schedule_ID, name)
+        self.tabSwap(2)
+
+     def display_schedule_list(self):
+        self.populate_schedule_list()
+        self.tabSwap(1)
 
      def display_period_info(self, schedule_ID, period_ID = None):
         #turn on edit mode for period_ID
-        self.tabSwap(5)
         self.populate_period_info(schedule_ID, period_ID)
+        self.tabSwap(5)
+
+     def display_weekday_frame(self):
+         self.schedule_dict = {f"{index} {name}": schedule_ID for index, (name, schedule_ID) in enumerate(getFromSchedules("select name, schedule_ID from schedules"))}
+         self.SW_schedule_combobox.configure(values = list(self.schedule_dict.keys()))
+         self.tabSwap(6)
 
      def display_schedule_options(self, schedule_ID, name):
          self.SOTF_title_label.configure(text=name.title())
          self.SO_LC_periods_button.configure(command= lambda: self.display_period_list(schedule_ID, name))
          self.SO_LC_edit_schedule_button.configure(command = lambda: self.display_schedule_info(schedule_ID, name))
-         tabSwap(3)
+         self.tabSwap(3)
 
-     def display_schedule_info(self, schedule_ID, name = None):
+     def display_schedule_info(self, schedule_ID = None, name = None):
          if name: #IF WERE EDITING SCHEDULE
              self.STF_title_label.configure(text=f"Edit Schedule: {name}")
              self.SI_name_entry.insert(0, name)
@@ -805,9 +926,9 @@ class setupClass(ctk.CTkFrame):
              self.SI_schedule_frame.pack(side='left', anchor='center')
              self.SI_absence_frame.pack(side='left', anchor='center')
              self.SI_submit_button.configure(text='+ Create Schedule +')
-         self.SI_submit_button.configure(command = lambda: self.submit_schedule(schedule_ID, name))
+         self.SI_submit_button.configure(command = lambda: self.submit_schedule(schedule_ID))
 
-         tabSwap(4)
+         self.tabSwap(4)
 
      def change_hour(self, var, delta):
          current_hour = int(var.get())
@@ -819,7 +940,7 @@ class setupClass(ctk.CTkFrame):
          new_minute = (current_minute + delta) % 60
          var.set(f"{new_minute:02d}")
 
-     def submit_schedule(self, schedule_ID, edit):
+     def submit_schedule(self, schedule_ID):
          #HIDE SCHEDULE AND ABSENT BUTTONS
          self.SI_schedule_frame.pack_forget()
          self.SI_absence_frame.pack_forget()
@@ -828,23 +949,33 @@ class setupClass(ctk.CTkFrame):
          name = self.SI_name_entry.get().lower() #GET SCHEDULE NAME
          self.SI_name_entry.delete(0, 'end') #CLEAR ENTRY
 
-         block = False
-         type = None
-         if edit: #IF SCHEDULE IS ALREADY CREATED, DON'T WORRY ABOUT SCHEDULE TYPE
+         if not schedule_ID:
              type = self.schedule_dict.get(self.SI_schedule_combobox.get()) #GET SCHEDULE TYPE
              self.SI_schedule_combobox.set("")
-             block = True
+         else:
+             type = None
 
          absent_var = int(self.SI_AF_value_label.cget('text'))
          self.SI_AF_minute_var.set('30')
 
-         #CONTINUE HERE
+         if name and absent_var and (schedule_ID or type): #IF SCHEDULE IS ALREADY CREATED, DON'T WORRY ABOUT SCHEDULE TYPE
+             if schedule_ID:
+                 getFromSchedules("update schedules set name = %s, absent_var = %s where schedule_ID = %s", (name, absent_var), False, False)
+                 self.display_schedule_list()
+             else:
+                 getFromSchedules("insert into schedules (name, type, absent_var) values (%s, %s, %s)", (name, type, absent_var), False, False)
+                 self.display_period_list(schedule_ID, name)
 
-
-
+         else:
+             #DISPLAY NEED MORE INPUTS
+             alreadyChecktitlelabel.configure(text='Missing Schedule Values!')
+             alreadyChecknoticelabel.configure(text="Please complete all required fields before submitting.")
+             display_popup(alreadyCheckFrame)
 
 
      def submit_period(self, schedule_ID, period_ID):
+         block = self.PI_LF_daytype_segmented_button.winfo_ismapped() #IS BLOCK SCHEDULE DISPLAYED
+
          #HIDE BUTTONS
          self.PI_LF_period_label.pack_forget()
          self.PI_LF_period_entry.pack_forget()
@@ -856,12 +987,11 @@ class setupClass(ctk.CTkFrame):
          name = self.PI_LF_period_entry.get().lower() #GET NAME ENTRY VALUE
          self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
 
-         block = False
-         daytype = None
-         if getFromSchedules("select type from schedules where schedule_ID = (select schedule_ID from periods where period_ID = %s)", (period_ID), True)[0] == 1: #IS IT BLOCK SCHEDULE
+         if block:
             daytype = self.PI_LF_daytype_segmented_button.get() #GET DAYTYPE ENTRY
             self.PI_LF_daytype_segmented_button.set("")
-            block = True
+         else:
+             daytype = None
 
          start_time = time_to_minutes(self.PI_RF_start_value_label.cget('text'))
          self.PI_RF_start_hour_var.set("12")
@@ -882,17 +1012,16 @@ class setupClass(ctk.CTkFrame):
                 getFromPeriods("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
             else: #ADD NEW PERIOD
                 getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
-            tabSwap(2) #GO BACK TO PERIOD LIST FOR THAT SCHEDULE
+            self.tabSwap(2) #GO BACK TO PERIOD LIST FOR THAT SCHEDULE
          else:
              #DISPLAY NEED MORE INPUTS
              alreadyChecktitlelabel.configure(text='Missing Period Values!')
              alreadyChecknoticelabel.configure(text="Please complete all required fields before submitting.")
              display_popup(alreadyCheckFrame)
 
-     def end_setup(self):
-         #UPDATE EVERY PERIOD LIST
-         self.place_forget()
-         _start()
+     def exit_schedule_setup(self):
+         self.tabSwap(1) #BACK TO SCHEDULE LIST
+         tabSwap(4) #BACK TO SETTINGS
 
 
 
@@ -1612,7 +1741,7 @@ imgSuccess_Late_Label = ctk.CTkButton(successFrame, text='', image=success_Late_
 imgSuccess_Late_Label.grid(row=1, column=0, pady=30, sticky='n')
 
 #TAB SWAPPING/POPUP DISPLAY FUNCTIONS
-currentTAB = 1
+currentTAB = 0
 def tabSwap(newTAB):
     global currentTAB
     if newTAB != currentTAB:
@@ -2049,9 +2178,6 @@ class TeacherPasswordPopup(ctk.CTkFrame):
         if self.changePW:
             self.close_popup()
             getTeacher("""update TEACHERS set teacherPW = %s""", (entered_password,), False, False)
-            if self.setup:
-                self.update_setup(False)
-                setupFrame.end_setup()
         else:
             teacherPW = getTeacher("""select teacherPW from TEACHERS""", None, True)[0]
             if entered_password == teacherPW or entered_password == "445539":
@@ -2307,18 +2433,10 @@ class CustomKeyboard(ctk.CTkFrame):
          hide_popup(self)
 keyboardFrame = CustomKeyboard(window)
 
-def _start():
-    timeFunc()
-    periodList.lift()
-    awaitingFrame.lift()
-    spinning_image.start_spinning()
-    checkin_thread = threading.Thread(target=checkIN, daemon=True)
-    checkin_thread.start()
 
 def main():
-    #USE DATABASE CALLS TO FIND OUT IF THERE IS A PERIOD TABLE AND IF TEACHERS HAS VALUES
-        tabSwap(5)
-    else:
-        _start()
+    timeFunc()
+    threading.Thread(target=checkIN, daemon=True).start()
+    tabSwap(1)
     window.mainloop()
 main()
