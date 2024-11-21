@@ -677,28 +677,27 @@ class setupClass(ctk.CTkFrame):
 
          #COMBOBOX (updates values every time weekday frame is displayed)
          self.SW_schedule_dict = {}
-         self.SW_schedule_combobox = ctk.CTkComboBox(self.SW_TF_title_frame, height = 70, dropdown_font=('Space Grotesk', 25, 'bold'), font=('Space Grotesk', 28, 'bold'), command = lambda: self.populate_weekday_frame(self.schedule_dict.get(self.SI_schedule_combobox.get())))
+         self.SW_schedule_type = None
+         self.SW_schedule_combobox = ctk.CTkComboBox(self.SW_TF_title_frame, height = 70,dropdown_font=('Space Grotesk', 25, 'bold'), font=('Space Grotesk', 28, 'bold'), command = lambda: self.populate_weekday_frame(self.schedule_dict.get(self.SI_schedule_combobox.get())))
          self.SW_schedule_combobox.pack(side='left', padx=(20,5))
 
          #LOWER FRAME CONTAINER (weekday frame)
          self.SW_lower_container_frame = ctk.CTkFrame(self.select_weekdays_frame)
          self.SW_lower_container_frame.pack(side='top',fill='both',expand=True)
 
-
-
-
-         #CONTINUE HERE
-
-
-
-
-
          #WEEKDAY SETUP
-         weekday_list = ("Sunday:", "Monday:", "Tuesday:", "Wednesday:", "Thursday:", "Friday:", "Saturday:")
+         weekday_list = ("Monday:", "Tuesday:", "Wednesday:", "Thursday:", "Friday:", "Saturday:", "Sunday:")
+         self.weekday_dict = {}
          for index, day in enumerate(weekday_list):
              ctk.CTkLabel(self.SW_lower_container_frame, text = day, font=('Space Grotesk', 19)).grid(column=0, row = index, pady=10)
-             ctk.CTkCheckBox(self.SW_lower_container_frame, width= 50, height=50, command = lambda: self.display_weekday_daytype(index, self.schedule_dict.get(self.SI_schedule_combobox.get()))).grid(column=1, row = index, pady=10)
+             checkbox = ctk.CTkCheckBox(self.SW_lower_container_frame,width= 50, height=50, command = lambda: self.display_weekday_daytype(index, checkbox.get(), self.SW_schedule_type))
+             combobox = ctk.CTkComboBox(self.SW_lower_container_frame, width = 200, height = 60, values = ['A', 'B', 'Dynamic'], font = ('Space Grotesk', 18), dropdown_font=('Space Grotesk', 25))
+             checkbox.grid(row=index, column=1, padx=5,pady=10)
+             self.weekday_dict[index] = (checkbox, combobox)
 
+         #WEEKDAY SUBMIT BUTTON
+         self.SW_submit_button = ctk.CTkButton(self.SW_lower_container_frame, width = 160, height = 280, text='Submit', font=('Space Grotesk', 25, 'bold'))
+         self.SW_submit_button.grid(row=1, column=3, rowspan=5)
 
          #Setup student assignment frame (specific to each period) 7
          self.student_period_selection_frame = ctk.CTkFrame(self)
@@ -716,6 +715,7 @@ class setupClass(ctk.CTkFrame):
 
          self.left_image = ctk.CTkImage(light_image=Image.open(), size=(50,50))
          self.right_image = ctk.CTkImage(light_image=Image.open(), size=(50,50))
+
          self.add_image = ctk.CTkImage(light_image=Image.open(), size=(40,40))
          self.manage_schedules = ctk.CTkImage(light_image=Image.open(), size=(40,40))
          self.weekday_image = ctk.CTkImage(light_image=Image.open(), size=(40,40))
@@ -864,6 +864,7 @@ class setupClass(ctk.CTkFrame):
                  self.PTF_title_label.configure(text='Edit Period: ' + name)
                  self.PI_LF_submit_button.configure(text='Submit Edits')
                  #SET PERIOD NAME
+                 self.PI_LF_period_entry.delete(0, 'end')
                  self.PI_LF_period_entry.insert(0, name)
                  start_time, end_time, late_var = callMultiple(get_period_info_curs, "select start_time, end_time, late_var from periods where period_ID = %s", (period_ID,), True)
 
@@ -878,7 +879,23 @@ class setupClass(ctk.CTkFrame):
                  self.PI_LF_submit_button.configure(text='+ Create Period +')
 
      def populate_weekday_frame(self, schedule_ID):
-         #input whats days are checked and their daytypes from database
+         weekday_info = {row[0]: (row[1], row[2]) for row in getFromSchedule_Days("select weekday, dynamic_daytype, daytype from schedule_days where schedule_ID = %s ORDER BY weekday ASC", (schedule_ID,))}
+         self.SW_schedule_type = getFromSchedules("select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
+         self.clear_weekday_frame()
+         edit = False
+         if weekday_info: #IF THIS SCHEDULE ALREADY HAS INFORMATION SAVED, POPULATE IT
+            edit = True
+            for key, values in self.weekday_dict.items():
+                 checkbox, combobox = values
+                 if weekday_info.get(key)[1]: #CHECK IF DAYTYPE EXISTS, CHECKBOX SHOULD BE CHECKED!
+                     checkbox.select()
+                     self.display_weekday_daytype(key, 1, self.SW_schedule_type)
+                     if self.SW_schedule_type:
+                         if weekday_info.get(key)[0]: #IS IT A DYNAMIC DAY
+                             combobox.set('Dynamic')
+                         else:
+                             combobox.set(weekday_info.get(key)[1])
+         self.SW_submit_button.configure(command=lambda: self.submit_weekdays(schedule_ID, edit)) #MAKE SURE SUBMIT BUTTON HAS SCHEDULE ID
 
      def delete_schedule(self, schedule_ID):
          #delete schedule logic
@@ -886,8 +903,17 @@ class setupClass(ctk.CTkFrame):
      def delete_period(self, period_ID):
          #delete period logic
 
-     def display_weekday_daytype(self, day_number, schedule_ID):
+     def display_weekday_daytype(self, index, value, type):
         #displays A/B/Dynamic option after clicking a checkbox
+        combobox = self.weekday_dict.get(index)[1]
+        if type == 1:
+            if value:
+                combobox.grid(column=2, row = index, pady=10, padx=10)
+            else:
+                combobox.grid_forget()
+                combobox.set("")
+
+
 
      def display_period_list(self, schedule_ID, name):
         self.populate_period_list(schedule_ID, name)
@@ -916,6 +942,7 @@ class setupClass(ctk.CTkFrame):
      def display_schedule_info(self, schedule_ID = None, name = None):
          if name: #IF WERE EDITING SCHEDULE
              self.STF_title_label.configure(text=f"Edit Schedule: {name}")
+             self.SI_name_entry.delete(0, 'end')
              self.SI_name_entry.insert(0, name)
              #ADD ABSENCE FRAME
              self.SI_AF_minute_var.set(f"{(str(getFromSchedules("select absent_var from schedules where schedule_ID = %s", (schedule_ID,), True)[0])):02d}")
@@ -939,6 +966,13 @@ class setupClass(ctk.CTkFrame):
          current_minute = int(var.get())
          new_minute = (current_minute + delta) % 60
          var.set(f"{new_minute:02d}")
+
+     def clear_weekday_frame(self):
+         for value in self.weekday_dict.values():
+             checkbox, combobox = value
+             checkbox.deselect()
+             combobox.set("")
+             combobox.grid_forget()
 
      def submit_schedule(self, schedule_ID):
          #HIDE SCHEDULE AND ABSENT BUTTONS
@@ -1019,6 +1053,35 @@ class setupClass(ctk.CTkFrame):
              alreadyChecknoticelabel.configure(text="Please complete all required fields before submitting.")
              display_popup(alreadyCheckFrame)
 
+     def submit_weekdays(self, schedule_ID, edit):
+         #TAKE INFO AND SUBMIT IT TO DATABASE, CLEAR VALUES AND RESET COMBOBOX SELECTION
+         submit_list = []
+         for key, values in self.weekday_dict.items():
+             checkbox, combobox = values
+             if checkbox.get(): #IF CHECKBOX IS CHECKED
+                 dynamic_daytype = 0
+                 if combobox.winfo_ismapped(): #IF COMBOBOX IS DISPLAYED
+                     daytype = combobox.get()
+                     if daytype == "": #HAVE THEY NOT SELECTED ON OPTION FOR DYNAMIC DAYTYPE
+                         alreadyChecktitlelabel.configure(text='Missing Weekday Values!')
+                         alreadyChecknoticelabel.configure(text="Please complete all required fields before submitting.")
+                         display_popup(alreadyCheckFrame)
+                     elif daytype == 'Dynamic':
+                         daytype = '/'
+                         dynamic_daytype = 1
+                 else:
+                     daytype = "-"
+                     submit_list.append([schedule_ID, key, dynamic_daytype, daytype, schedule_ID, key])
+             else: #CHECKBOX NOT CHECKED
+                 submit_list.append([schedule_ID, key, 0, None, schedule_ID, key])
+         with db.cursor() as weekday_curs:
+             if edit: #WE ARE UPDATING
+                weekday_curs.executemany("update schedule_days set schedule_ID = %s, weekday = %s, dynamic_daytype = %s, daytype = %s where schedule_ID = %s and weekday = %s", (submit_list))
+             else: #WE ARE INSERTING
+                weekday_curs.executemany("insert into schedule_days (schedule_ID, weekday, dynamic_daytype, daytype) values (%s, %s, %s, %s)", (submit_list))
+         self.clear_weekday_frame()
+         self.SW_submit_button.configure(command=lambda: None)
+         self.SW_schedule_combobox.set("")
      def exit_schedule_setup(self):
          self.tabSwap(1) #BACK TO SCHEDULE LIST
          tabSwap(4) #BACK TO SETTINGS
