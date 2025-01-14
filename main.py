@@ -322,6 +322,7 @@ ORDER BY sc.status ASC, sn.first_name ASC"""
                 column = index % 2
 
                 studentFrame.grid(row=row, column=column, pady=5, padx=3, sticky='nsw')
+        studentList._parent_canvas.yview_moveto(0)
 
 #PERIODLIST UPDATING
 def periodListPop():
@@ -426,7 +427,7 @@ def checkIN():
                         getFromStudent_Periods("update student_periods set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
                         getFromStudent_Names("update student_names set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
                         firstname, lastname = getFirstLastName(ID)
-                        warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset*"
+                        warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
                         warning_confirmation.config("reset ID success")
 
                     elif currentTAB != 6:
@@ -471,7 +472,8 @@ def enable_swipe_scroll(scrollable_frame):
     scrollable_frame.bind("<ButtonRelease-1>", end_scroll)
     scrollable_frame.bind("<MouseWheel>", scroll_wheel)
 
-
+def open_dropdown(combobox, event):
+    combobox._open_dropdown_menu()
 
 #FRAME CLASSES
 class setupClass(ctk.CTkFrame):
@@ -485,7 +487,6 @@ class setupClass(ctk.CTkFrame):
          self.rowconfigure(0, weight=1)
 
          self.deleteImage = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/deleteIcon.png"),size=(50,50))
-         print(self.deleteImage)
          self.back_button_image = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/back_button.png"), size = (50, 50))
 
 
@@ -500,7 +501,6 @@ class setupClass(ctk.CTkFrame):
          self.SL_scrollable_frame.columnconfigure(0, weight=1)
          self.SL_scrollable_frame._scrollbar.configure(width=25)
          self.SL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
-
 
 
 
@@ -597,8 +597,9 @@ class setupClass(ctk.CTkFrame):
          self.SI_schedule_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
          self.SI_schedule_label = ctk.CTkLabel(self.SI_schedule_frame, text = "Schedule Type:", font = ('Space Grotesk', 18, 'bold'))
          self.SI_schedule_label.pack(padx=10,pady=5,side='top')
-         self.SI_schedule_combobox = ctk.CTkComboBox(self.SI_schedule_frame, values = ['Block', 'Traditional'], dropdown_font=('Space Grotesk', 25), dropdown_text_color='gray', height = 70, width=200, font=('Space Grotesk', 20, 'bold'))
+         self.SI_schedule_combobox = ctk.CTkComboBox(self.SI_schedule_frame, values = ['Block', 'Traditional'], dropdown_font=('Space Grotesk', 25), state='readonly', height = 70, width=200, font=('Space Grotesk', 20, 'bold'))
          self.SI_schedule_combobox.pack(padx=5,pady=5,side='top')
+         self.SI_schedule_combobox.bind("<Button-1>", partial(open_dropdown, self.SI_schedule_combobox))
 
          #ABSENCE FRAME
          self.SI_absence_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
@@ -780,8 +781,9 @@ class setupClass(ctk.CTkFrame):
          #COMBOBOX (updates values every time weekday frame is displayed)
          self.SW_schedule_dict = {}
          self.SW_schedule_type = None
-         self.SW_schedule_combobox = ctk.CTkComboBox(self.SW_TF_title_frame, width=250,height = 60,dropdown_font=('Space Grotesk', 25, 'bold'), font=('Space Grotesk', 24), command = self.populate_weekday_frame)
+         self.SW_schedule_combobox = ctk.CTkComboBox(self.SW_TF_title_frame, width=350,height = 60,dropdown_font=('Space Grotesk', 25), font=('Space Grotesk', 24, 'bold'), command = self.populate_weekday_frame, state="readonly")
          self.SW_schedule_combobox.pack(side='left', padx=20)
+         self.SW_schedule_combobox.bind("<Button-1>", partial(open_dropdown, self.SW_schedule_combobox))
 
          #LOWER FRAME CONTAINER (weekday frame)
          self.SW_lower_container_frame = ctk.CTkFrame(self.select_weekdays_frame)
@@ -796,6 +798,7 @@ class setupClass(ctk.CTkFrame):
              checkbox = ctk.CTkCheckBox(self.SW_lower_container_frame,text='',checkbox_width=50, checkbox_height=50, variable = checkbox_var,command = partial(self.display_weekday_daytype, index, checkbox_var))
              combobox = ctk.CTkComboBox(self.SW_lower_container_frame, width = 200, height = 50, state='readonly',values = ['A', 'B', 'Dynamic'], font = ('Space Grotesk', 18), dropdown_font=('Space Grotesk', 25))
              checkbox.grid(row=index, column=1, padx=5,pady=10)
+             combobox.bind("<Button-1>", partial(open_dropdown, combobox))
              self.weekday_dict[index] = (checkbox, combobox)
 
          #WEEKDAY SUBMIT BUTTON
@@ -917,6 +920,7 @@ class setupClass(ctk.CTkFrame):
          self.exit_button = ctk.CTkButton(self, text='X', font=("Space Grotesk", 26, 'bold'),command=self.exit_schedule_setup, height = 60, width = 100)
          self.exit_button.place(relx=.895,rely=.01)
 
+
      #UPDATE ALL LABELS
      def update_label(self, var, label, *args):
          label.configure(text=var.get())
@@ -1018,7 +1022,9 @@ class setupClass(ctk.CTkFrame):
 
 
                 ctk.CTkButton(schedule_frame, text=schedule_info[1], height=60,width=schedule_frame.winfo_width()*5/6,bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 20, 'bold'), command = lambda i0 = schedule_info[0], i1 = schedule_info[1]: self.display_schedule_options(i0, i1)).grid(row=0, column=1, sticky='nsew')
-                ctk.CTkButton(schedule_frame, image=self.deleteImage,text='',compound='left',fg_color='red',height=60,width=schedule_frame.winfo_width()*1/6,bg_color='white', border_width=4, border_color='white',command = lambda i0=schedule_info[0] : self.delete_schedule(i0)).grid(row=0, column=0, sticky='nsew')
+                ctk.CTkButton(schedule_frame, image=self.deleteImage,text='',compound='left',fg_color='red',height=60,width=schedule_frame.winfo_width()*1/6,bg_color='white', border_width=4, border_color='white',command = lambda i0=schedule_info[0] : self.delete_schedule_check(i0)).grid(row=0, column=0, sticky='nsew')
+             self.SL_scrollable_frame._parent_canvas.yview_moveto(0)
+
          else:
              ctk.CTkLabel(self.SL_scrollable_frame, text="No Schedules To Display...", text_color='gray',font=("Space Grotesk", 25)).pack(pady=200, anchor='center')
 
@@ -1034,11 +1040,12 @@ class setupClass(ctk.CTkFrame):
             period_frame.columnconfigure(0, weight=1, uniform='columns')
             period_frame.columnconfigure(1, weight=4, uniform='columns')
             ctk.CTkButton(period_frame, text=f"{period_info[2]}: {period_info[1]}" if period_info[2] != "-" else period_info[1], height = 60,width=period_frame.winfo_width()*5/6, bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 20, 'bold'), command = lambda i0=period_info[0]: self.display_period_info(schedule_ID, i0)).grid(row=0, column=1, sticky='nsew')
-            ctk.CTkButton(period_frame, text='', image=self.deleteImage, fg_color='red',height = 60,width=period_frame.winfo_width()*1/6,bg_color='white', border_width=4, border_color='white', compound = 'left',command = lambda i0=period_info[0]: self.delete_period(i0)).grid(row=0, column=0, sticky='nsew')
+            ctk.CTkButton(period_frame, text='', image=self.deleteImage, fg_color='red',height = 60,width=period_frame.winfo_width()*1/6,bg_color='white', border_width=4, border_color='white', compound = 'left',command = lambda i0=period_info[0]: self.delete_period_check(i0)).grid(row=0, column=0, sticky='nsew')
 
         self.create_period_frame = ctk.CTkFrame(self.PL_scrollable_frame, height= 60,fg_color="#1f6aa5", bg_color='white', border_width=4, border_color='white')
         ctk.CTkButton(self.create_period_frame, text="+ Create New Period +", bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 25, 'bold'), command = lambda: self.display_period_info(schedule_ID)).pack(fill='both', expand=True)
         self.create_period_frame.grid(row=len(periods), column=0, sticky='ew', padx=5, pady=5)
+        self.PL_scrollable_frame._parent_canvas.yview_moveto(0)
 
 
      def populate_period_info(self, schedule_ID, period_ID):
@@ -1128,6 +1135,7 @@ class setupClass(ctk.CTkFrame):
              student_checkbox.pack(side='right',pady=5,padx=5)
 
              self.SA_MSF_student_dict[macID] = student_checkbox
+         self.SA_master_scrollable_frame._parent_canvas.yview_moveto(0)
 
      def populate_SA_period_frame(self, period_ID):
          for widget in self.SA_period_scrollable_frame.winfo_children():
@@ -1148,6 +1156,7 @@ class setupClass(ctk.CTkFrame):
              student_checkbox.pack(side='right',pady=5,padx=5)
 
              self.SA_PSF_student_dict[macID] = student_checkbox
+         self.SA_period_scrollable_frame._parent_canvas.yview_moveto(0)
 
      def update_SA_checkboxes(self, dictionary, selecting):
          if selecting:
@@ -1157,14 +1166,27 @@ class setupClass(ctk.CTkFrame):
              for checkbox in dictionary.values():
                  checkbox.deselect()
 
+     def delete_schedule_check(self, schedule_ID):
+         warning_confirmation.warning_confirmation_dict['remove schedule check'][3] = lambda i0 = schedule_ID: self.delete_schedule(i0)
+         warning_confirmation.warning_confirmation_dict['remove schedule check'][1] = f"*This will entirely remove {getFromSchedules('select name from schedules where schedule_ID = %s', (schedule_ID,), True)[0]} and every period in it.*"
+         warning_confirmation.config('remove schedule check')
+
+     def delete_period_check(self, period_ID):
+         warning_confirmation.warning_confirmation_dict['remove period check'][3] = lambda i0 = period_ID: self.delete_period(i0)
+         warning_confirmation.warning_confirmation_dict['remove period check'][1] = f"*This will entirely remove {getFromPeriods('select name from periods where period_ID = %s', (period_ID,), True)[0]}.*"
+         warning_confirmation.config('remove period check')
+
      def delete_schedule(self, schedule_ID):
-         #reset active schedule
+         print("deleting schedule" + str(schedule_ID))
+         hide_popup(warning_confirmation)
+         """#reset active schedule
          getFromSystem_Control("update system_control set active_schedule_ID = %s where active_schedule_ID = %s", (None, schedule_ID), False, False)
          #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
-         getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
+         getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)"""
 
      def delete_period(self, period_ID):
-         print('deleting period')
+         print('deleting period' + str(period_ID))
+         hide_popup(warning_confirmation)
 
      def display_SA_success(self, decision, inserted, overlap, name):
          if inserted:
@@ -1464,7 +1486,7 @@ class historyFrameClass(ctk.CTkFrame):
         self.periods = {}
         self.period_menu = ctk.CTkComboBox(self.column_frame, values = [],variable=self.period_var, height=(.0666666*sHeight), font=("Arial", 18), command= self.update_student_menu,dropdown_font=('Arial',25), state='readonly')
         self.period_menu.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
-        self.period_menu.bind("<Button-1>", self.open_period_menu)
+        self.period_menu.bind("<Button-1>", partial(open_dropdown, self.period_menu))
 
         #Student Selection
         self.tempframe4 = ctk.CTkFrame(self.column_frame,fg_color='#2b2b2b')
@@ -1481,7 +1503,7 @@ class historyFrameClass(ctk.CTkFrame):
 
         self.top_name_menu = ctk.CTkComboBox(self.column_frame, values=[], state='readonly', variable=self.top_name_var, height=(.0666666*sHeight),width=.2*sWidth, font=("Arial", 18),dropdown_font=('Arial',25))
         self.top_name_menu.grid(row=3, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
-        self.top_name_menu.bind("<Button-1>", self.open_top_name_menu)
+        self.top_name_menu.bind("<Button-1>", partial(open_dropdown, self.top_name_menu))
 
         # Date selection
         self.month_var = IntVar(value=datetime.now().month)
@@ -1531,7 +1553,7 @@ class historyFrameClass(ctk.CTkFrame):
         self.attendance_var = StringVar()
         self.attendance_menu = ctk.CTkComboBox(self.column_frame, state='readonly', values=list(self.attendance_vars.keys()), variable=self.attendance_var, height=(.0666666*sHeight), font=("Arial", 15),dropdown_font=('Arial',25))
         self.attendance_menu.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
-        self.attendance_menu.bind("<Button-1>", self.open_attendance_menu)
+        self.attendance_menu.bind("<Button-1>", partial(open_dropdown, self.attendance_menu))
 
 
         # Submit Button
@@ -1555,18 +1577,6 @@ class historyFrameClass(ctk.CTkFrame):
     def update_period_menu(self):
         self.periods = {f"{index}: {name}": period_ID for index, (name, period_ID) in enumerate(getFromPeriods("select name, period_ID from periods where schedule_ID = %s order by block_val ASC, start_time ASC", (get_active_schedule_ID(),)), start=1)}
         self.period_menu.configure(values=list(self.periods.keys()))
-
-    def open_attendance_menu(self, event):
-        self.attendance_menu._open_dropdown_menu()
-
-    def open_top_name_menu(self, event):
-        self.top_name_menu._open_dropdown_menu()
-
-    def open_period_menu(self, event):
-        self.period_menu._open_dropdown_menu()
-
-    def open_top_period_menu(self, event):
-        self.top_period_menu._open_dropdown_menu()
 
     # Functions to increment and decrement the date
     def increment_month(self):
@@ -1696,7 +1706,7 @@ class historyFrameClass(ctk.CTkFrame):
                     self.display_nothing()
             elif not students:
                 self.display_nothing()
-
+            self.scrollable_frame._parent_canvas.yview_moveto(0)
             # Update layout and style to ensure even distribution
             self.scrollable_frame.grid_columnconfigure(0, weight=1)
             self.scrollable_frame.grid_columnconfigure(1, weight=1)
@@ -1747,7 +1757,7 @@ class TeacherFrameClass(ctk.CTkFrame):
         self.period_menu_var = ctk.StringVar(value="")
         self.period_menu = ctk.CTkComboBox(self.top_frame,variable = self.period_menu_var,dropdown_font=("Space Grotesk", 25),state='readonly', font=("Space Grotesk", 18), height=(.0666666*sHeight), command=self.period_selected, width=sWidth * .24)
         self.period_menu.grid(row=0, column=3, padx=10, pady=10)
-        self.period_menu.bind("<Button-1>", self.open_dropdown)
+        self.period_menu.bind("<Button-1>", partial(open_dropdown, self.period_menu))
 
         #ACTIVE SCHEDULE SELECTION
         self.schedule_menu_label = ctk.CTkLabel(self.top_frame, text='Active Schedule:', font= ('Space Grotesk', 20, 'bold'))
@@ -1756,7 +1766,7 @@ class TeacherFrameClass(ctk.CTkFrame):
         self.schedule_menu_var = ctk.StringVar(value="")
         self.schedule_menu = ctk.CTkComboBox(self.top_frame,variable = self.schedule_menu_var,dropdown_font=("Space Grotesk", 25),state='readonly', font=("Space Grotesk", 18), height=(.0666666*sHeight), command=self.schedule_selected, width=sWidth * .24)
         self.schedule_menu.grid(row=0, column=1, padx=10, pady=10)
-        self.schedule_menu.bind("<Button-1>", self.open_schedule_dropdown)
+        self.schedule_menu.bind("<Button-1>", partial(open_dropdown, self.schedule_menu))
 
         # Scrollable Frame (takes remaining vertical space below top bar with padding)
         self.scrollable_frame = ctk.CTkScrollableFrame(self,label_text='Edit Student(s):',label_font=('Roboto',25,'bold'))
@@ -1768,12 +1778,6 @@ class TeacherFrameClass(ctk.CTkFrame):
         # Configure grid weights for resizing
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(1, weight=1)
-
-    def open_dropdown(self,event):
-        self.period_menu._open_dropdown_menu()
-
-    def open_schedule_dropdown(self, event):
-        self.schedule_menu._open_dropdown_menu()
 
     def change_password(self):
         teacherPWPopup.change_pw(True)
@@ -1847,7 +1851,7 @@ class TeacherFrameClass(ctk.CTkFrame):
                         tabSwap(5)
                         setupFrame.display_student_assignment_frame(period_ID, period_name[3:])
                     ctk.CTkButton(self.scrollable_frame, text="+", font = ('Space Grotesk',20, 'bold'),text_color='blue', fg_color="lightgrey", corner_radius=10, height =60,border_color="gray",border_width=2,command = lambda: command()).grid(row=0, column=0, padx=10,pady=5,sticky='nsew', columnspan=2)
-
+                self.scrollable_frame._parent_canvas.yview_moveto(0)
                 # Update layout and style to ensure even distribution
                 self.scrollable_frame.grid_columnconfigure(0, weight=1)
                 self.scrollable_frame.grid_columnconfigure(1, weight=1)
@@ -1960,8 +1964,6 @@ class LoadingAnimation(ctk.CTkFrame):
 
      def stop_spinning(self):
          self.is_spinning = False
-
-
 
 
 #ALWAYS WIDGETS (top bar)-----------------------------------------------------
@@ -2094,6 +2096,29 @@ imgSuccess_Late_Label = ctk.CTkButton(successFrame, text='', image=success_Late_
 imgSuccess_Late_Label.grid(row=1, column=0, pady=30, sticky='n')
 
 #TAB SWAPPING/POPUP DISPLAY FUNCTIONS
+timeout_flag = False
+def start_timeout():
+    stop_timeout()
+    threading.Thread(target=timeout, daemon = True).start()
+
+def timeout():
+    global timeout_flag
+    timeout_flag = False
+    time_left = 300 #ADD VARIABLE TIMEOUT NUMBER LATER
+    while time_left > 0:
+        if timeout_flag:
+            timeout_flag = False
+            break
+        time_left-=1
+        time.sleep(1)
+    tabSwap(1)
+
+def stop_timeout():
+    global timeout_flag
+    timeout_flag = True
+
+
+#TABSWAP--
 currentTAB = 0
 def tabSwap(newTAB):
     global currentTAB
@@ -2103,30 +2128,36 @@ def tabSwap(newTAB):
             periodList.lift()
             spinning_image.start_spinning()
             awaitingFrame.lift()
+            stop_timeout()
         elif newTAB == 2: #DISPLAY LIST OF STUDENTS
             studentList.lift()
             spinning_image.start_spinning()
             awaitingFrame.lift()
+            stop_timeout()
         elif newTAB == 3: #DISPLAY HISTORY FRAME
             spinning_image.stop_spinning()
             historyFrame.update_period_menu()
             historyFrame.fetch_students()
             historyFrame.lift()
+            start_timeout()
         elif newTAB == 4: #DISPLAY TEACHER MODE FRAME
             spinning_image.stop_spinning()
             teacherFrame.update_period_menu()
             teacherFrame.update_schedule_menu()
             teacherFrame.lift()
-        elif newTAB == 5:
+            start_timeout()
+        elif newTAB == 5: #DISPLAY SETUP FRAME
             spinning_image.stop_spinning()
             setupFrame.display_schedule_list()
             setupFrame.place(x=0,y=0)
             setupFrame.lift()
-        elif newTAB == 6:
+            start_timeout()
+        elif newTAB == 6: #DISPLAY STUDENT INFO FRAME
             spinning_image.stop_spinning()
             getStudentInfoFrame.update_return(currentTAB)
             getStudentInfoFrame.place(x=0,y=0)
             getStudentInfoFrame.lift()
+            start_timeout()
         currentTAB = newTAB
 
 currentPopup = None
@@ -2294,7 +2325,6 @@ class StudentMenu(ctk.CTkFrame):
 
         #Reset macID Button
         self.reset_button = ctk.CTkButton(self.nameandperiodFrame, text = "Reset ID",font=('Space Grotesk',24,'bold'),width=80, height = 80, command=self.check_reset)
-        self.reset_button.place(relx=.01,rely=.9)
 
         #Warning Label
         self.warning_label = ctk.CTkLabel(self.nameFrame,text="Missing Information!",fg_color='red',font=('Arial',16,'bold'))
@@ -2302,12 +2332,12 @@ class StudentMenu(ctk.CTkFrame):
     def check_reset(self):
         firstname, lastname = getFirstLastName(self.macID)
         warning_confirmation.warning_confirmation_dict['reset ID check'][0] = f"Reset {firstname} {lastname}'s student ID?"
-        warning_confirmation.warning_confirmation_dict['reset ID check'][3] = lambda: getStudentInfoFrame.reset_macID(self.macID)
+        warning_confirmation.warning_confirmation_dict['reset ID check'][3] = lambda i0 = self.macID: self.reset_macID(i0)
         self.close_popup()
         warning_confirmation.config("reset ID check")
 
     def reset_macID(self, macID):
-        firstname, lastname = getFirstLastName(self.macID)
+        firstname, lastname = getFirstLastName(macID)
         warning_confirmation.warning_confirmation_dict['reset ID'][1] = f"*Please scan the new student ID to reset the ID associated with {firstname} {lastname}.*"
         warning_confirmation.config("reset ID")
 
@@ -2367,6 +2397,7 @@ class StudentMenu(ctk.CTkFrame):
     def setStudentData(self):
         self.editing = True
         self.delete_student.place(relx=.01,rely=.02)
+        self.reset_button.place(relx=.01,rely=.84)
         self.newStudent_label.configure(text='Edit Student Data: ',text_color='orange')
         fname, lname = getFirstLastName(self.macID)
         periods = [item[0] for item in getFromStudent_Periods("""SELECT period_ID from student_periods WHERE macID = %s""",(self.macID,))]
@@ -2403,6 +2434,7 @@ class StudentMenu(ctk.CTkFrame):
         self.macID = None
         self.newStudent_label.configure(text='New Student:',text_color='white')
         self.delete_student.place_forget()
+        self.reset_button.place_forget()
         self.warning_label.pack_forget()
         # Uncheck all checkboxes
         self.update_periods()
@@ -2570,7 +2602,7 @@ class EditAttendanceClass(ctk.CTkFrame):
         #Delete Check In
         trashImage = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/deleteIcon.png"),size=(50,50))
         self.delete_button = ctk.CTkButton(self, text="", image=trashImage,width=60, height=60, command=lambda: self.delete_attendance())
-        self.delete_button.place(relx=.86,rely=.66)  # Top right corner
+        self.delete_button.place(relx=.86,rely=.76)
 
         #Grid Configuration
         self.columnconfigure(0, weight=1)
@@ -2593,12 +2625,17 @@ class EditAttendanceClass(ctk.CTkFrame):
         self.attendance_dropdown = ctk.CTkComboBox(self, variable=self.attendance_var,values = list(self.attendance_mapping.keys()),height=45,font=('Space Grotesk',16),dropdown_font=('Space Grotesk',24),width=250,state='readonly')
         self.attendance_dropdown.set("")
         self.attendance_dropdown.grid(row=1, column = 0, pady=10, sticky='n')
+        self.attendance_dropdown.bind("<Button-1>", partial(open_dropdown, self.attendance_dropdown))
+
 
         #Reason Input (default will be admin alteration)
         self.reasons = ["Admin edit", "Medical", "Extracurricular", "Teacher note", "Custom"]
         self.reason_dropdown = ctk.CTkComboBox(self,values = self.reasons,height=45,font=('Space Grotesk',16),dropdown_font=('Space Grotesk',24),width=300,state='readonly', command = self.custom_toggle)
         self.reason_dropdown.set("Admin edit")
         self.reason_dropdown.grid(row=2, column=0,pady=10, sticky='n')
+        self.reason_dropdown.bind("<Button-1>", partial(open_dropdown, self.reason_dropdown))
+
+
 
         #Custom Reason Entry
         self.reason_entry = ctk.CTkEntry(self, font=('Space Grotesk',16), placeholder_text="Enter custom reason...", height = 40, width = 320)
@@ -2853,12 +2890,14 @@ class warning_confirmation_class(ctk.CTkFrame):
                                           "period input": ['Missing Period Values!', "Please complete all required fields before submitting.", 'orange', None],
                                           "weekday input": ['Missing Weekday Values!', "Please complete all required fields before submitting.", 'orange',  None],
                                           "unexpected error": ["An Unexpected Error Has Occured!", "error", 'red', None],
-                                          "factory reset": ["Factory Reset Device?", "*This will clear everything*", "red", lambda: self.config("reset check")],
-                                          "reset check": ["Are you sure?", "", "red", lambda: self.reset_display_password_menu()],
+                                          "factory reset": ["Factory Reset Device?", "*Warning! This will clear everything on the device (includes schedules, periods, students, and passwords).*", "red", lambda: self.config("reset check")],
+                                          "reset check": ["Are you sure?", "*This action is not reversible.*", "red", lambda: self.reset_display_password_menu()],
                                           "remove student": ["title", "*This will remove them from the system permanently.*", "red", "command"],
                                           "reset ID check": ["title", "*This will re-assign what student ID is associated with this student.*", "red", "command"],
-                                          "reset ID": ["Scan New ID!", "note", "red", "notice"],
-                                          "reset ID success" : ["Successfully Reset ID!", "note", "green", None]
+                                          "reset ID": ["Scan New ID!", "note", "orange", "notice"],
+                                          "reset ID success" : ["Successfully Reset ID!", "note", "green", None],
+                                          "remove schedule check" : ["Are you sure?", "note", "red", "command"],
+                                          "remove period check" : ["Are you sure?", "note", "red", "command"]
                                          }
 
 
