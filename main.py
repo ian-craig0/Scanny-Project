@@ -406,7 +406,7 @@ def checkIN():
                             getStudentInfoFrame.setMACID(ID)
                             tabSwap(6)
                         checkInCursor.close()
-                elif currentTAB == 3: #PRELOAD HISTORY FRAME WITH MACID SCAN
+                    """elif currentTAB == 3: #PRELOAD HISTORY FRAME WITH MACID SCAN
                     historyFrame.period_check.select()
                     historyFrame.top_name_check.select()
                     #GET FIRST PERIOD STUDENT IS IN (NAME: PER)
@@ -420,7 +420,7 @@ def checkIN():
                         #GET NAME IN FORMAT (Ian Craig)
                         name_info = getFromStudent_Names("select first_name, last_name from student_names where macID = %s", (ID,), True)
                         historyFrame.top_name_menu.set(f"{name_info[0]} {name_info[1]}")
-                        historyFrame.fetch_students()
+                        historyFrame.fetch_students()"""
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
                     if warning_confirmation.current_key == "reset ID" and warning_confirmation.winfo_ismapped():
                         hide_popup(warning_confirmation)
@@ -920,7 +920,27 @@ class setupClass(ctk.CTkFrame):
          self.exit_button = ctk.CTkButton(self, text='X', font=("Space Grotesk", 26, 'bold'),command=self.exit_schedule_setup, height = 60, width = 100)
          self.exit_button.place(relx=.895,rely=.01)
 
+         #TARDY FRAME -------------------------------------------------------------------------------------------
+         self.PI_RF_tardy_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
+         self.PI_RF_tardy_frame.grid_propagate(0)
+         self.PI_RF_tardy_frame.grid(row=2, column=0, sticky='nsew')
 
+         self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
+
+         #TARDY MINUTE SELECTORS
+         self.PI_RF_tardy_minute_up = ctk.CTkButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
+         self.PI_RF_tardy_minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
+         self.PI_RF_tardy_minute_down = ctk.CTkButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
+         self.PI_RF_tardy_minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
+
+         #TARDY LABELS
+         self.PI_RF_tardy_label = ctk.CTkLabel(self.PI_RF_tardy_frame, text='Tardy Threshold:', font=('Space Grotesk', 20, 'bold'))
+         self.PI_RF_tardy_label.grid(row=4, column=1,pady=5,padx=10)
+         self.PI_RF_tardy_value_label = ctk.CTkLabel(self.PI_RF_tardy_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_tardy_minute_var.get()}")
+         self.PI_RF_tardy_value_label.grid(row=5,column=1,pady=5)
+
+         #TARDY UPDATE LABEL CODE
+         self.PI_RF_tardy_minute_var.trace_add("write", partial(self.update_label, self.PI_RF_tardy_minute_var, self.PI_RF_tardy_value_label))
      #UPDATE ALL LABELS
      def update_label(self, var, label, *args):
          label.configure(text=var.get())
@@ -1719,7 +1739,7 @@ class historyFrameClass(ctk.CTkFrame):
 
 
 #TEACHER MODE FRAME
-class TeacherFrameClass(ctk.CTkFrame):
+class settingsClass(ctk.CTkFrame):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.reset = 0
@@ -1736,8 +1756,11 @@ class TeacherFrameClass(ctk.CTkFrame):
         self.arrival_button = ctk.CTkButton(self.left_frame, text="Edit Schedules",height=50,font=('Space Grotesk',16,'bold'), command=self.edit_schedule)
         self.arrival_button.grid(row=0, column=0, pady=(50, 10))
 
+        self.timeout_button = ctk.CTkButton(self.left_frame, text='Change Idle Timeout', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command=self.edit_timeout)
+        self.timeout_button.grid(row=2, column=0, pady=15)
+
         self.reset_button = ctk.CTkButton(self.left_frame, text="Factory Reset",height=50,font=('Space Grotesk',16,'bold'), command=lambda: warning_confirmation.config('factory reset'))
-        self.reset_button.grid(row=2, column=0, pady=15)
+        self.reset_button.grid(row=3, column=0, pady=15)
 
         # Configure row stretching for the last row
         self.left_frame.grid_rowconfigure(7, weight=1)  # Ensures proper spacing at the bottom without affecting buttons
@@ -1783,6 +1806,10 @@ class TeacherFrameClass(ctk.CTkFrame):
         teacherPWPopup.change_pw(True)
         teacherPWPopup.change_label('Change Teacher Password:')
         display_popup(teacherPWPopup)
+
+    def edit_timeout(self):
+        timeoutMenu.update()
+        display_popup(timeoutMenu)
 
     def edit_schedule(self):
         tabSwap(5)
@@ -2028,7 +2055,7 @@ displayedTabContainer.columnconfigure(1,weight=2)
 
 #SINGLE FRAMES
 
-teacherFrame = TeacherFrameClass(displayedTabContainer)
+teacherFrame = settingsClass(displayedTabContainer)
 teacherFrame.grid(row=0,column=0,columnspan=2,sticky='nsew')
 
 
@@ -2096,26 +2123,54 @@ imgSuccess_Late_Label = ctk.CTkButton(successFrame, text='', image=success_Late_
 imgSuccess_Late_Label.grid(row=1, column=0, pady=30, sticky='n')
 
 #TAB SWAPPING/POPUP DISPLAY FUNCTIONS
+timeout_thread = None
+timeout_active = False
 timeout_flag = False
-def start_timeout():
-    stop_timeout()
-    threading.Thread(target=timeout, daemon = True).start()
+reset_flag = False
+timeout_time = 300 #GIVE CUSTOMIZATION LATER
 
 def timeout():
-    global timeout_flag
-    timeout_flag = False
-    time_left = 300 #ADD VARIABLE TIMEOUT NUMBER LATER
-    while time_left > 0:
-        if timeout_flag:
-            timeout_flag = False
+    """The main loop for the countdown."""
+    global timeout_flag, timeout_active, reset_flag, timeout_time
+    timeout_active = True
+    time_left = timeout_time  # Initial countdown time in seconds
+
+    while timeout_active:
+        if timeout_flag:  # Stop the loop
             break
-        time_left-=1
-        time.sleep(1)
-    tabSwap(1)
+
+        if reset_flag:  # Reset the timer
+            reset_flag = False
+            time_left = timeout_time  # Reset countdown
+
+        if time_left > 0:
+            time_left -= 1
+            time.sleep(1)
+        else:
+            tabSwap(1)
+            timeout_active = False  # Exit the loop when the timeout ends
+
+def start_timeout():
+    """Start the timeout thread if not already running."""
+    global timeout_thread, timeout_active, timeout_flag, reset_flag
+    if not timeout_active:  # Ensure only one thread runs
+        timeout_flag = False  # Ensure stop flag is not set
+        reset_flag = False  # Reset any leftover reset state
+        timeout_thread = threading.Thread(target=timeout, daemon=True)
+        timeout_thread.start()
+
+def reset_timeout(event=None):
+    """Reset the countdown if it is running."""
+    global timeout_active, reset_flag
+    if timeout_active:
+        reset_flag = True
 
 def stop_timeout():
-    global timeout_flag
-    timeout_flag = True
+    """Stop the countdown and terminate the loop."""
+    global timeout_flag, timeout_active
+    if timeout_active:
+        timeout_flag = True
+        timeout_active = False
 
 
 #TABSWAP--
@@ -2960,11 +3015,87 @@ class warning_confirmation_class(ctk.CTkFrame):
         else:
             self.exit_button.pack(anchor='center')
         display_popup(self)
-
-
-
-#move to popups
 warning_confirmation = warning_confirmation_class(window)
+
+class timeoutMenuClass(ctk.CTkFrame):
+    def __init__(self, master):
+        super().__init__(master)
+        #ARRIVAL TIME NEEDS INPUT WARNING
+        self.configure(width=(sWidth/2), height=(sHeight/1.75), border_color= 'white', border_width=4, bg_color='white')
+        self.grid_propagate(0)
+        self.pack_propagate(0)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight = 1)
+        self.rowconfigure(1, weight = 1)
+
+        #upper container frame
+        self.upper_frame = ctk.CTkFrame(self, fg_color = "#2b2b2b")
+        self.upper_frame.columnconfigure(0, weight=1)
+        self.upper_frame.rowconfigure(0, weight=1)
+        self.upper_frame.rowconfigure(1, weight=2)
+        self.upper_frame.grid(row=0, column=0, sticky='nsew',padx=4,pady=4)
+
+        #title
+        self.title_label = ctk.CTkLabel(self.upper_frame, text = "Change Idle Timeout Delay",font=('Space Grotesk', 25, 'bold'), text_color= "#1f6aa5", wraplength=sWidth/2-16)
+        self.title_label.grid(row=0, column=0, pady=(10, 5), padx = 5, sticky='n')
+
+        #notice
+        self.notice_label = ctk.CTkLabel(self.upper_frame, text="*This will change the amount of time it takes before system automatically returns to main menu when in settings or history.*",font=('Space Grotesk', 15), wraplength=sWidth/2-16)
+        self.notice_label.grid(row=1, column=0, pady=(5, 15), padx = 5, sticky='n')
+
+        #lower container frame
+        self.lower_frame = ctk.CTkFrame(self, fg_color = "#2b2b2b")
+        self.lower_frame.columnconfigure(0, weight=1)
+        self.lower_frame.rowconfigure(0, weight=3)
+        self.lower_frame.rowconfigure(1, weight=1)
+        self.lower_frame.grid(row=1, column=0, sticky='nsew',padx=4,pady=4)
+
+        #time selection
+        self.selection_frame = ctk.CTkFrame(self.lower_frame, fg_color='#2B2B2B')
+        self.selection_frame.grid_propagate(0)
+        self.selection_frame.grid(row=0, column=0, sticky='nsew', padx= (100,0), pady=10)
+
+        self.selection_frame_var = ctk.StringVar(value = '05')
+
+        #TARDY MINUTE SELECTORS
+        self.minute_up = ctk.CTkButton(self.selection_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.selection_frame_var, +1))
+        self.minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
+        self.minute_down = ctk.CTkButton(self.selection_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.selection_frame_var, -1))
+        self.minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
+
+        #TARDY LABELS
+        self.timeout_label = ctk.CTkLabel(self.selection_frame, text='Timeout Delay:', font=('Space Grotesk', 20, 'bold'))
+        self.timeout_label.grid(row=4, column=1,pady=5,padx=10)
+        self.timeout_value_label = ctk.CTkLabel(self.selection_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.selection_frame_var.get()}")
+        self.timeout_value_label.grid(row=5,column=1,pady=5)
+
+        #TARDY UPDATE LABEL CODE
+        self.selection_frame_var.trace_add("write", partial(self.update_label, self.selection_frame_var, self.timeout_value_label))
+
+        #submit button
+        self.submit_button = ctk.CTkButton(self.lower_frame, font = ('Space Grotesk', 18, 'bold'), text='Submit',border_color='white',border_width=4, command = self.submit, width = 200, height = 60)
+        self.submit_button.grid(row=1, column=0, sticky='s', pady = 10)
+
+    #UPDATE ALL LABELS
+    def update_label(self, var, label, *args):
+        label.configure(text=var.get())
+
+    def change_minute(self, var, delta):
+        current_minute = int(var.get())
+        new_minute = (current_minute + delta) % 60
+        var.set(f"{new_minute:02d}")
+
+    def update(self):
+        self.selection_frame_var.set(f"{(getFromSystem_Control('select timeout_time from system_control', None, True)[0]):02d}")
+
+    def submit(self):
+        getFromSystem_Control("update system_control set timeout_time = %s", (int(self.timeout_value_label.cget('text')),), False, False)
+        hide_popup(self)
+timeoutMenu = timeoutMenuClass(window)
+
+
+#touch input detection
+window.bind_all("<Button-1>", reset_timeout)
 
 def main():
     timeFunc()
