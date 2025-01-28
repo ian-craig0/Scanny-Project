@@ -250,6 +250,9 @@ def newDay():
     day = date.today().weekday()
     if getFromSchedule_Days("select dynamic_daytype from schedule_days where schedule_ID = %s and weekday = %s and dynamic_daytype = True", (get_active_schedule_ID(), day), True):
         display_popup(fridayperiodframe)
+        teacherFrame.toggle_dynamic_button(True)
+    else:
+        teacherFrame.toggle_dynamic_button(False)
 
 #TIME CONVERT FUNCTIONS
 def time_to_minutes(timeStr):
@@ -336,7 +339,7 @@ def periodListPop():
             for period in periods:
                 def command(per):
                     tabSwap(2)
-                    threading.Thread(target=studentListPop(per), daemon=True).start()
+                    studentListPop(per)
                 ctk.CTkButton(periodList,border_width=4,bg_color='white',text=(f"{callMultiple(period_pop_curs, 'select name from periods where period_ID = %s', (period,), True)[0]}"), border_color='white', font=('Space Grotesk Medium', 20),command=lambda i0 = period: command(i0)).pack(fill = 'both', expand = True)
         else:
             ctk.CTkLabel(periodList, text='No Periods to Display...', font=('Space Grotesk', 30), text_color='gray').place(relx=0.5, rely=0.5, anchor='center')
@@ -392,7 +395,7 @@ def checkIN():
                                                 #NEED REASON LOGIC (FOR NOW ALWAYS NULL)
                                                 checkInCursor.execute("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None))
                                                 tabSwap(2)
-                                                threading.Thread(target=studentListPop(period_ID), daemon=True).start()
+                                                studentListPop(period_ID)
                                                 successScan(scan_time, ID, status)
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
                                             continue
@@ -422,14 +425,14 @@ def checkIN():
                         historyFrame.top_name_menu.set(f"{name_info[0]} {name_info[1]}")
                         historyFrame.fetch_students()"""
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
-                    if warning_confirmation.current_key == "reset ID" and warning_confirmation.winfo_ismapped():
-                        hide_popup(warning_confirmation)
-                        getFromStudent_Periods("update student_periods set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
-                        getFromStudent_Names("update student_names set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
-                        firstname, lastname = getFirstLastName(ID)
-                        warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
-                        warning_confirmation.config("reset ID success")
-
+                    if warning_confirmation.winfo_ismapped():
+                        if warning_confirmation.current_key == "reset ID":
+                            hide_popup(warning_confirmation)
+                            getFromStudent_Periods("update student_periods set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
+                            getFromStudent_Names("update student_names set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
+                            firstname, lastname = getFirstLastName(ID)
+                            warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
+                            warning_confirmation.config("reset ID success")
                     elif currentTAB != 6:
                         editStudentData(ID)
                 sleep_ms(100)
@@ -1060,7 +1063,7 @@ class setupClass(ctk.CTkFrame):
             period_frame.columnconfigure(0, weight=1, uniform='columns')
             period_frame.columnconfigure(1, weight=4, uniform='columns')
             ctk.CTkButton(period_frame, text=f"{period_info[2]}: {period_info[1]}" if period_info[2] != "-" else period_info[1], height = 60,width=period_frame.winfo_width()*5/6, bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 20, 'bold'), command = lambda i0=period_info[0]: self.display_period_info(schedule_ID, i0)).grid(row=0, column=1, sticky='nsew')
-            ctk.CTkButton(period_frame, text='', image=self.deleteImage, fg_color='red',height = 60,width=period_frame.winfo_width()*1/6,bg_color='white', border_width=4, border_color='white', compound = 'left',command = lambda i0=period_info[0]: self.delete_period_check(i0)).grid(row=0, column=0, sticky='nsew')
+            ctk.CTkButton(period_frame, text='', image=self.deleteImage, fg_color='red',height = 60,width=period_frame.winfo_width()*1/6,bg_color='white', border_width=4, border_color='white', compound = 'left',command = lambda i0=period_info[0], i1 = schedule_ID: self.delete_period_check(i0, i1)).grid(row=0, column=0, sticky='nsew')
 
         self.create_period_frame = ctk.CTkFrame(self.PL_scrollable_frame, height= 60,fg_color="#1f6aa5", bg_color='white', border_width=4, border_color='white')
         ctk.CTkButton(self.create_period_frame, text="+ Create New Period +", bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 25, 'bold'), command = lambda: self.display_period_info(schedule_ID)).pack(fill='both', expand=True)
@@ -1191,21 +1194,34 @@ class setupClass(ctk.CTkFrame):
          warning_confirmation.warning_confirmation_dict['remove schedule check'][1] = f"*This will entirely remove {getFromSchedules('select name from schedules where schedule_ID = %s', (schedule_ID,), True)[0]} and every period in it.*"
          warning_confirmation.config('remove schedule check')
 
-     def delete_period_check(self, period_ID):
-         warning_confirmation.warning_confirmation_dict['remove period check'][3] = lambda i0 = period_ID: self.delete_period(i0)
+     def delete_period_check(self, period_ID, schedule_ID):
+         warning_confirmation.warning_confirmation_dict['remove period check'][3] = lambda i0 = period_ID, i1 = schedule_ID: self.delete_period(i0, i1)
          warning_confirmation.warning_confirmation_dict['remove period check'][1] = f"*This will entirely remove {getFromPeriods('select name from periods where period_ID = %s', (period_ID,), True)[0]}.*"
          warning_confirmation.config('remove period check')
 
      def delete_schedule(self, schedule_ID):
+         getFromSystem_Control("update system_control set active_schedule_ID = %s", (None,), False, False)
+         #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
+         getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
          print("deleting schedule" + str(schedule_ID))
          hide_popup(warning_confirmation)
-         """#reset active schedule
-         getFromSystem_Control("update system_control set active_schedule_ID = %s where active_schedule_ID = %s", (None, schedule_ID), False, False)
-         #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
-         getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)"""
 
-     def delete_period(self, period_ID):
-         print('deleting period' + str(period_ID))
+
+
+     def delete_period(self, period_ID, schedule_ID):
+         getFromPeriods("delete from periods where period_ID = %s", (period_ID,), False, False)
+         #refresh schedule period list
+         self.populate_period_list(schedule_ID, None)
+         #clear history filters and reset results
+         historyFrame.top_name_menu.set("")
+         historyFrame.top_name_check.deselect()
+         historyFrame.period_menu.set("")
+         historyFrame.period_check.deselect()
+         historyFrame.fetch_students()
+         #clear settings period selection and reset results
+         teacherFrame.update_period_menu()
+         teacherFrame.period_selected(teacherFrame.period_menu.get())
+         #close check popup
          hide_popup(warning_confirmation)
 
      def display_SA_success(self, decision, inserted, overlap, name):
@@ -1470,6 +1486,7 @@ class setupClass(ctk.CTkFrame):
              self.clear_weekday_frame()
              self.SW_submit_button.configure(command=lambda: None)
              self.SW_schedule_combobox.set("")
+             newDay()
 
      def exit_schedule_setup(self):
          self.tabSwap(1) #BACK TO SCHEDULE LIST
@@ -1759,8 +1776,14 @@ class settingsClass(ctk.CTkFrame):
         self.timeout_button = ctk.CTkButton(self.left_frame, text='Change Idle Timeout', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command=self.edit_timeout)
         self.timeout_button.grid(row=2, column=0, pady=15)
 
+        self.dynamic_day_button = ctk.CTkButton(self.left_frame, text='Change Daytype\n(dynamic)', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command = lambda: display_popup(fridayperiodframe))
+
+        self.restart_button = ctk.CTkButton(self.left_frame, text= 'Refresh System', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command = self.restart_check)
+        self.restart_button.grid(row=6, column=0, pady=15)
+
         self.reset_button = ctk.CTkButton(self.left_frame, text="Factory Reset",height=50,font=('Space Grotesk',16,'bold'), command=lambda: warning_confirmation.config('factory reset'))
-        self.reset_button.grid(row=3, column=0, pady=15)
+        self.reset_button.grid(row=7, column=0, pady=15)
+
 
         # Configure row stretching for the last row
         self.left_frame.grid_rowconfigure(7, weight=1)  # Ensures proper spacing at the bottom without affecting buttons
@@ -1801,6 +1824,18 @@ class settingsClass(ctk.CTkFrame):
         # Configure grid weights for resizing
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(1, weight=1)
+
+    def toggle_dynamic_button(self, value):
+        if value:
+            self.dynamic_day_button.grid(row=3, column=0, pady=15)
+        else:
+            self.dynamic_day_button.grid_forget()
+
+    def restart_check(self):
+        warning_confirmation.config("restart check")
+
+    def restart_script(self):
+        os.execl(sys.executable, sys.executable, *sys.argv)
 
     def change_password(self):
         teacherPWPopup.change_pw(True)
@@ -2127,13 +2162,12 @@ timeout_thread = None
 timeout_active = False
 timeout_flag = False
 reset_flag = False
-timeout_time = 300 #GIVE CUSTOMIZATION LATER
 
 def timeout():
     """The main loop for the countdown."""
-    global timeout_flag, timeout_active, reset_flag, timeout_time
+    global timeout_flag, timeout_active, reset_flag, currentPopup
     timeout_active = True
-    time_left = timeout_time  # Initial countdown time in seconds
+    time_left = getFromSystem_Control("select timeout_time from system_control", None, True)[0]  # Initial countdown time in seconds
 
     while timeout_active:
         if timeout_flag:  # Stop the loop
@@ -2141,12 +2175,16 @@ def timeout():
 
         if reset_flag:  # Reset the timer
             reset_flag = False
-            time_left = timeout_time  # Reset countdown
+            time_left = getFromSystem_Control("select timeout_time from system_control", None, True)[0]  # Reset countdown
 
         if time_left > 0:
             time_left -= 1
             time.sleep(1)
         else:
+            if currentPopup:
+                if currentPopup.winfo_ismapped(): #POTENTIAL FOR ERRORS
+                    hide_popup(currentPopup)
+            getStudentInfoFrame.close_popup()
             tabSwap(1)
             timeout_active = False  # Exit the loop when the timeout ends
 
@@ -2755,7 +2793,7 @@ class EditAttendanceClass(ctk.CTkFrame):
 
 editAttendanceFrame = EditAttendanceClass(window)
 
-class FridayPeriodSelection(ctk.CTkFrame):
+class dynamic_day_selectionClass(ctk.CTkFrame):
      def __init__(self, parent,*args, **kwargs):
          super().__init__(parent, *args, **kwargs,width=sWidth*3/7, height=sHeight/2,border_width=4,border_color='white',bg_color='transparent')
          self.grid_propagate(0)
@@ -2766,7 +2804,7 @@ class FridayPeriodSelection(ctk.CTkFrame):
 
          # Title label
          self.titleFrame = ctk.CTkFrame(self,border_width=4,border_color='white',bg_color='white')
-         self.title_label = ctk.CTkLabel(self.titleFrame, text="Is Today an A or B Day?", font=("Roboto", 20,'bold'))
+         self.title_label = ctk.CTkLabel(self.titleFrame, text="Dynamic: Is Today an A or B Day?", font=("Roboto", 19,'bold'))
          self.title_label.pack(side='top',pady=(20,0),anchor='center')
 
          self.titleFrame.grid(column=0,row=0,columnspan=2,sticky='nsew')
@@ -2788,7 +2826,7 @@ class FridayPeriodSelection(ctk.CTkFrame):
          periodListPop()
          hide_popup(self)
          currentPopup = None
-fridayperiodframe = FridayPeriodSelection(window)
+fridayperiodframe = dynamic_day_selectionClass(window)
 
 class CustomKeyboard(ctk.CTkFrame):
      def __init__(self, master):
@@ -2952,7 +2990,8 @@ class warning_confirmation_class(ctk.CTkFrame):
                                           "reset ID": ["Scan New ID!", "note", "orange", "notice"],
                                           "reset ID success" : ["Successfully Reset ID!", "note", "green", None],
                                           "remove schedule check" : ["Are you sure?", "note", "red", "command"],
-                                          "remove period check" : ["Are you sure?", "note", "red", "command"]
+                                          "remove period check" : ["Are you sure?", "note", "red", "command"],
+                                          "restart check" : ["Restart System?", "*This will temporarily refresh the system (no data will be lost)*", "orange", lambda: teacherFrame.restart_script()]
                                          }
 
 
@@ -3044,7 +3083,9 @@ class timeoutMenuClass(ctk.CTkFrame):
         self.notice_label.grid(row=1, column=0, pady=(5, 15), padx = 5, sticky='n')
 
         #lower container frame
-        self.lower_frame = ctk.CTkFrame(self, fg_color = "#2b2b2b")
+        self.lower_frame = ctk.CTkFrame(self, fg_color = "#2b2b2b", height = 210)
+        self.lower_frame.pack_propagate(0)
+        self.lower_frame.grid_propagate(0)
         self.lower_frame.columnconfigure(0, weight=1)
         self.lower_frame.rowconfigure(0, weight=3)
         self.lower_frame.rowconfigure(1, weight=1)
@@ -3082,14 +3123,14 @@ class timeoutMenuClass(ctk.CTkFrame):
 
     def change_minute(self, var, delta):
         current_minute = int(var.get())
-        new_minute = (current_minute + delta) % 60
+        new_minute = (current_minute + delta - 1) % 59 + 1
         var.set(f"{new_minute:02d}")
 
     def update(self):
-        self.selection_frame_var.set(f"{(getFromSystem_Control('select timeout_time from system_control', None, True)[0]):02d}")
+        self.selection_frame_var.set(f"{int((int(getFromSystem_Control('select timeout_time from system_control', None, True)[0]) / 60)):02d}")
 
     def submit(self):
-        getFromSystem_Control("update system_control set timeout_time = %s", (int(self.timeout_value_label.cget('text')),), False, False)
+        getFromSystem_Control("update system_control set timeout_time = %s", (int(self.timeout_value_label.cget('text')) * 60,), False, False)
         hide_popup(self)
 timeoutMenu = timeoutMenuClass(window)
 
