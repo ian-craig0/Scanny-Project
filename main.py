@@ -51,49 +51,49 @@ master_macID = "04:F7:2C:0A:68:19:90"
 
 #DATA BASE FUNCTIONS
 def displayError(error):
-     warning_confirmation.warning_confirmation_dict["unexpected error"][1] = str(error)
-     warning_confirmation.config("unexpected error")
+    warning_confirmation.warning_confirmation_dict["unexpected error"][1] = str(error)
+    warning_confirmation.config("unexpected error")
 
 def reconnect():
-     global db
-     try:
-         db = MySQLdb.connect(
-             host='localhost',
-             user='root',
-             passwd='seaside',
-             db='scanner',
-             autocommit=True
-         )
-     except MySQLdb.OperationalError as err:
-         db = None  # Clear the db variable to indicate failed reconnection
+    global db
+    try:
+        db = MySQLdb.connect(
+            host='localhost',
+            user='root',
+            passwd='seaside',
+            db='scanner',
+            autocommit=True
+        )
+    except MySQLdb.OperationalError as err:
+        db = None  # Clear the db variable to indicate failed reconnection
 
 def callMultiple(cursor, query, params=None, fetchone=False, get=True, retries=4):
-     """Execute a query with automatic retry and reconnection handling."""
-     attempts = 0
-     while attempts < retries:
-         try:
-             cursor.execute(query, params)
-             if get:
-                 return cursor.fetchone() if fetchone else cursor.fetchall()
-             else:
-                 break  # For non-fetch queries, simply exit after execution
-         except MySQLdb.OperationalError as err:
-             if err.args[0] == 2006:  # MySQL server has gone away
-                 # Attempt to reconnect and reinitialize the cursor
-                 reconnect()
-                 if db is None:
-                     return "error" if get else None  # Indicate failure
-                 cursor = db.cursor()  # Refresh the cursor after reconnecting
-             else:
-                 if attempts == retries - 1:
-                     return "error" if get else None
-         except mysql.connector.Error as err:
-             if attempts == retries - 1:
-                 return "error" if get else displayError(err)
+    """Execute a query with automatic retry and reconnection handling."""
+    attempts = 0
+    while attempts < retries:
+        try:
+            cursor.execute(query, params)
+            if get:
+                return cursor.fetchone() if fetchone else cursor.fetchall()
+            else:
+                break  # For non-fetch queries, simply exit after execution
+        except MySQLdb.OperationalError as err:
+            if err.args[0] == 2006:  # MySQL server has gone away
+                # Attempt to reconnect and reinitialize the cursor
+                reconnect()
+                if db is None:
+                    return "error" if get else None  # Indicate failure
+                cursor = db.cursor()  # Refresh the cursor after reconnecting
+            else:
+                if attempts == retries - 1:
+                    return "error" if get else None
+        except mysql.connector.Error as err:
+            if attempts == retries - 1:
+                return "error" if get else displayError(err)
 
-         # Increment attempts and wait before retrying
-         attempts += 1
-         time.sleep(1)  # Shorter sleep time to retry faster
+        # Increment attempts and wait before retrying
+        attempts += 1
+        time.sleep(1)  # Shorter sleep time to retry faster
 
 
 #MYSQL TABLE GETTER FUNCTIONS
@@ -236,12 +236,12 @@ def tempResetArrivalTimes():
 def factory_reset():
     print('factory resetting')
     #with db.cursor() as factory_curs:
-        #callMultiple(factory_curs,"""TRUNCATE TABLE PERIODS""", None, False, False)
-        #callMultiple(factory_curs,"""TRUNCATE TABLE ACTIVITY""", None, False, False)
-        #callMultiple(factory_curs,"""TRUNCATE TABLE SCANS""", None, False, False)
-        #callMultiple(factory_curs,"""TRUNCATE TABLE MASTER""", None, False, False)
-        #callMultiple(factory_curs,"""TRUNCATE TABLE TEACHERS""", None, False, False)
-        #callMultiple(factory_curs,"""INSERT INTO TEACHERS (A_B, ACTIVITY, SCHEDULE, teacherPW) values ('A', 0, "", "")""", None, False, False)
+    #callMultiple(factory_curs,"""TRUNCATE TABLE PERIODS""", None, False, False)
+    #callMultiple(factory_curs,"""TRUNCATE TABLE ACTIVITY""", None, False, False)
+    #callMultiple(factory_curs,"""TRUNCATE TABLE SCANS""", None, False, False)
+    #callMultiple(factory_curs,"""TRUNCATE TABLE MASTER""", None, False, False)
+    #callMultiple(factory_curs,"""TRUNCATE TABLE TEACHERS""", None, False, False)
+    #callMultiple(factory_curs,"""INSERT INTO TEACHERS (A_B, ACTIVITY, SCHEDULE, teacherPW) values ('A', 0, "", "")""", None, False, False)
     #os.execl(sys.executable, sys.executable, *sys.argv)
 
 #TIMING FUNCTIONS
@@ -348,10 +348,7 @@ ten_after = time_to_minutes(strftime("%H:%M")) + 10
 
 #CHECK IN FUNCTION
 def checkIN():
-    global currentPopup
-    global ten_after
-    global current_time
-    global currentTAB
+    global currentPopup, ten_after, current_time, currentTAB, reset_oldMACID
     while True:
         if ten_after == current_time:
             with db.cursor() as alive_curs:
@@ -409,32 +406,23 @@ def checkIN():
                             getStudentInfoFrame.setMACID(ID)
                             tabSwap(6)
                         checkInCursor.close()
-                    """elif currentTAB == 3: #PRELOAD HISTORY FRAME WITH MACID SCAN
-                    historyFrame.period_check.select()
-                    historyFrame.top_name_check.select()
-                    #GET FIRST PERIOD STUDENT IS IN (NAME: PER)
-                    period = getFromStudent_Periods("select period_ID from student_periods where macID = %s", (ID,), True)[0]
-                    if period:
-                        for key, value in historyFrame.periods.items():
-                            if value == period:
-                                historyFrame.period_menu.set(key)
-                                historyFrame.update_student_menu(key)
-                                break
-                        #GET NAME IN FORMAT (Ian Craig)
-                        name_info = getFromStudent_Names("select first_name, last_name from student_names where macID = %s", (ID,), True)
-                        historyFrame.top_name_menu.set(f"{name_info[0]} {name_info[1]}")
-                        historyFrame.fetch_students()"""
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
                     if warning_confirmation.winfo_ismapped():
                         if warning_confirmation.current_key == "reset ID":
-                            hide_popup(warning_confirmation)
-                            getFromStudent_Periods("update student_periods set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
-                            getFromStudent_Names("update student_names set macID = %s where macID = %s", (ID,getStudentInfoFrame.macID), False, False)
-                            firstname, lastname = getFirstLastName(ID)
-                            warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
-                            warning_confirmation.config("reset ID success")
+                            if getFromStudent_Names("select first_name from student_names where macID = %s", (ID,), True):
+                                firstname, lastname = getFirstLastName(ID)
+                                warning_confirmation.warning_confirmation_dict['reset ID fail'][1] = f"*This ID is already asssigned to {firstname} {lastname}.*"
+                                warning_confirmation.config("reset ID fail")
+                            else:
+                                firstname, lastname = getFirstLastName(reset_oldMACID)
+                                getFromStudent_Periods("update student_periods set macID = %s where macID = %s", (ID,reset_oldMACID), False, False)
+                                getFromStudent_Names("update student_names set macID = %s where macID = %s", (ID,reset_oldMACID), False, False)
+                                warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
+                                warning_confirmation.config("reset ID success")
+                                teacherFrame.period_selected(teacherFrame.period_menu.get())
                     elif currentTAB != 6:
-                        editStudentData(ID)
+                        if getFromStudent_Names("select first_name from student_names where macID = %s", (ID,), True):
+                            editStudentData(ID)
                 sleep_ms(100)
             else:
                 sleep_ms(100)
@@ -480,485 +468,485 @@ def open_dropdown(combobox, event):
 
 #FRAME CLASSES
 class setupClass(ctk.CTkFrame):
-     def __init__(self, parent):
-         super().__init__(parent)
-         global sWidth
-         global sHeight
-         self.configure(width=sWidth, height=sHeight)
-         self.grid_propagate(0)
-         self.columnconfigure(0, weight=1)
-         self.rowconfigure(0, weight=1)
+    def __init__(self, parent):
+        super().__init__(parent)
+        global sWidth
+        global sHeight
+        self.configure(width=sWidth, height=sHeight)
+        self.grid_propagate(0)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
 
-         self.deleteImage = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/deleteIcon.png"),size=(50,50))
-         self.back_button_image = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/back_button.png"), size = (50, 50))
+        self.deleteImage = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/deleteIcon.png"),size=(50,50))
+        self.back_button_image = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/back_button.png"), size = (50, 50))
 
 
-         self.current_tab = -1
+        self.current_tab = -1
 
-         #Setup schedule list frame (make a function to populate on each open) 1
-         self.schedule_list_frame = ctk.CTkFrame(self)
-         self.schedule_list_frame.grid(row=0, column=0, sticky='nsew')
+        #Setup schedule list frame (make a function to populate on each open) 1
+        self.schedule_list_frame = ctk.CTkFrame(self)
+        self.schedule_list_frame.grid(row=0, column=0, sticky='nsew')
 
-         self.SL_scrollable_frame = ctk.CTkScrollableFrame(self.schedule_list_frame, width=sWidth*3/4,height=sHeight*3/4, label_text="Manage Schedules:", label_font=('Space Grotesk', 25, 'bold'))
-         enable_swipe_scroll(self.SL_scrollable_frame)
-         self.SL_scrollable_frame.columnconfigure(0, weight=1)
-         self.SL_scrollable_frame._scrollbar.configure(width=25)
-         self.SL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
+        self.SL_scrollable_frame = ctk.CTkScrollableFrame(self.schedule_list_frame, width=sWidth*3/4,height=sHeight*3/4, label_text="Manage Schedules:", label_font=('Space Grotesk', 25, 'bold'))
+        enable_swipe_scroll(self.SL_scrollable_frame)
+        self.SL_scrollable_frame.columnconfigure(0, weight=1)
+        self.SL_scrollable_frame._scrollbar.configure(width=25)
+        self.SL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
 
-
-
-         #Setup period list frame (make a function to populate on each open) 2
-         self.period_list_frame = ctk.CTkFrame(self)
-         self.period_list_frame.grid(row=0, column=0, sticky='nsew')
-
-         #BACK BUTTON (period list frame)
-         self.PL_back_button = ctk.CTkButton(self.period_list_frame, image = self.back_button_image, text = '', height = 60, width = 100)
-         self.PL_back_button.place(rely=.01, relx = .79)
-
-         self.PL_scrollable_frame = ctk.CTkScrollableFrame(self.period_list_frame, width=sWidth*3/4,height=sHeight*3/4, label_font=('Space Grotesk', 25, 'bold'))
-         enable_swipe_scroll(self.PL_scrollable_frame)
-         self.PL_scrollable_frame._scrollbar.configure(width=25)
-         self.PL_scrollable_frame.columnconfigure(0, weight=1)
-         self.PL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
-
-
-
+
+
+        #Setup period list frame (make a function to populate on each open) 2
+        self.period_list_frame = ctk.CTkFrame(self)
+        self.period_list_frame.grid(row=0, column=0, sticky='nsew')
+
+        #BACK BUTTON (period list frame)
+        self.PL_back_button = ctk.CTkButton(self.period_list_frame, image = self.back_button_image, text = '', height = 60, width = 100)
+        self.PL_back_button.place(rely=.01, relx = .79)
+
+        self.PL_scrollable_frame = ctk.CTkScrollableFrame(self.period_list_frame, width=sWidth*3/4,height=sHeight*3/4, label_font=('Space Grotesk', 25, 'bold'))
+        enable_swipe_scroll(self.PL_scrollable_frame)
+        self.PL_scrollable_frame._scrollbar.configure(width=25)
+        self.PL_scrollable_frame.columnconfigure(0, weight=1)
+        self.PL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
+
+
+
 
-         #Setup schedule options frame (change commands based on schedule selected) 3
-         self.schedule_options_frame = ctk.CTkFrame(self)
-         self.schedule_options_frame.grid(row=0, column=0, sticky='nsew')
-
-         #TOP FRAME CREATION (SCHEDULE OPTIONS)
-         self.SO_top_frame = ctk.CTkFrame(self.schedule_options_frame, border_width=4,border_color='white')
-         self.SO_top_frame.pack(side='top',fill='x')
-         self.SOTF_title_label = ctk.CTkLabel(self.SO_top_frame, font=('Space Grotesk', 30, 'bold'))
-         self.SOTF_title_label.pack(anchor='center', pady=20)
+        #Setup schedule options frame (change commands based on schedule selected) 3
+        self.schedule_options_frame = ctk.CTkFrame(self)
+        self.schedule_options_frame.grid(row=0, column=0, sticky='nsew')
+
+        #TOP FRAME CREATION (SCHEDULE OPTIONS)
+        self.SO_top_frame = ctk.CTkFrame(self.schedule_options_frame, border_width=4,border_color='white')
+        self.SO_top_frame.pack(side='top',fill='x')
+        self.SOTF_title_label = ctk.CTkLabel(self.SO_top_frame, font=('Space Grotesk', 30, 'bold'))
+        self.SOTF_title_label.pack(anchor='center', pady=20)
 
-         #BACK BUTTON (schedule options)
-         self.SOTF_back_button = ctk.CTkButton(self.schedule_options_frame, image = self.back_button_image, text = '', height = 60, width = 100, command = self.display_schedule_list)
-         self.SOTF_back_button.place(rely=.01, relx = .79)
+        #BACK BUTTON (schedule options)
+        self.SOTF_back_button = ctk.CTkButton(self.schedule_options_frame, image = self.back_button_image, text = '', height = 60, width = 100, command = self.display_schedule_list)
+        self.SOTF_back_button.place(rely=.01, relx = .79)
 
-         #BOTTOM FRAME CREATION (SCHEDULE OPTIONS)
-         self.SO_lower_container_frame = ctk.CTkFrame(self.schedule_options_frame)
-         self.SO_lower_container_frame.pack(side='top',fill='both',expand=True)
-         self.SO_lower_container_frame.columnconfigure(0, weight=1)
-         self.SO_lower_container_frame.columnconfigure(1, weight=1)
-         self.SO_lower_container_frame.rowconfigure(0, weight=1)
-         self.SO_lower_container_frame.rowconfigure(1, weight=1)
-         self.SO_lower_container_frame.rowconfigure(2, weight=1)
+        #BOTTOM FRAME CREATION (SCHEDULE OPTIONS)
+        self.SO_lower_container_frame = ctk.CTkFrame(self.schedule_options_frame)
+        self.SO_lower_container_frame.pack(side='top',fill='both',expand=True)
+        self.SO_lower_container_frame.columnconfigure(0, weight=1)
+        self.SO_lower_container_frame.columnconfigure(1, weight=1)
+        self.SO_lower_container_frame.rowconfigure(0, weight=1)
+        self.SO_lower_container_frame.rowconfigure(1, weight=1)
+        self.SO_lower_container_frame.rowconfigure(2, weight=1)
 
-         #BOTTOM FRAME OPTION BUTTONS (SCHEDULE OPTIONS)
-         self.SO_LC_periods_button = ctk.CTkButton(self.SO_lower_container_frame, width=200, height = 90, text='Edit Periods', font=('Space Grotesk', 24, 'bold'))
-         self.SO_LC_periods_button.grid(column=0, row = 1, sticky='e',padx=(0,50))
-         self.SO_LC_edit_schedule_button = ctk.CTkButton(self.SO_lower_container_frame, width=200, height=90, text='Edit Schedule', font=('Space Grotesk', 24, 'bold'))
-         self.SO_LC_edit_schedule_button.grid(column=1, row = 1, sticky='w',padx=(50,0))
+        #BOTTOM FRAME OPTION BUTTONS (SCHEDULE OPTIONS)
+        self.SO_LC_periods_button = ctk.CTkButton(self.SO_lower_container_frame, width=200, height = 90, text='Edit Periods', font=('Space Grotesk', 24, 'bold'))
+        self.SO_LC_periods_button.grid(column=0, row = 1, sticky='e',padx=(0,50))
+        self.SO_LC_edit_schedule_button = ctk.CTkButton(self.SO_lower_container_frame, width=200, height=90, text='Edit Schedule', font=('Space Grotesk', 24, 'bold'))
+        self.SO_LC_edit_schedule_button.grid(column=1, row = 1, sticky='w',padx=(50,0))
 
 
 
 
-         #Setup new/edit schedule frame (clear on submit, input name and minutes, change title and submit button/display schedule type or not) 4
-         self.schedule_info_frame = ctk.CTkFrame(self)
-         self.schedule_info_frame.grid(row=0, column=0, sticky='nsew')
+        #Setup new/edit schedule frame (clear on submit, input name and minutes, change title and submit button/display schedule type or not) 4
+        self.schedule_info_frame = ctk.CTkFrame(self)
+        self.schedule_info_frame.grid(row=0, column=0, sticky='nsew')
 
 
-         #TOP FRAME CREATION (SCHEDULES)
-         self.SI_top_frame = ctk.CTkFrame(self.schedule_info_frame, border_width=4,border_color='white')
-         self.SI_top_frame.pack(side='top',fill='x')
-         self.STF_title_label = ctk.CTkLabel(self.SI_top_frame, font=('Space Grotesk', 30, 'bold'))
-         self.STF_title_label.pack(anchor='center', pady=20)
+        #TOP FRAME CREATION (SCHEDULES)
+        self.SI_top_frame = ctk.CTkFrame(self.schedule_info_frame, border_width=4,border_color='white')
+        self.SI_top_frame.pack(side='top',fill='x')
+        self.STF_title_label = ctk.CTkLabel(self.SI_top_frame, font=('Space Grotesk', 30, 'bold'))
+        self.STF_title_label.pack(anchor='center', pady=20)
 
-         #BACK BUTTON (schedule frame)
-         self.SI_back_button = ctk.CTkButton(self.schedule_info_frame, image = self.back_button_image, text = '', height = 60, width = 100)
-         self.SI_back_button.place(rely=.01, relx =.79)
-
-         #BOTTOM FRAME CREATION (SCHEDULES)
-         self.SI_lower_container_frame = ctk.CTkFrame(self.schedule_info_frame)
-         self.SI_lower_container_frame.grid_propagate(0)
-         self.SI_lower_container_frame.pack(side='top',fill='both',expand=True)
-         self.SI_lower_container_frame.rowconfigure(0, weight=1)
-         self.SI_lower_container_frame.rowconfigure(1, weight=1)
-         self.SI_lower_container_frame.rowconfigure(2, weight=1)
-         self.SI_lower_container_frame.columnconfigure(0, weight=1)
+        #BACK BUTTON (schedule frame)
+        self.SI_back_button = ctk.CTkButton(self.schedule_info_frame, image = self.back_button_image, text = '', height = 60, width = 100)
+        self.SI_back_button.place(rely=.01, relx =.79)
+
+        #BOTTOM FRAME CREATION (SCHEDULES)
+        self.SI_lower_container_frame = ctk.CTkFrame(self.schedule_info_frame)
+        self.SI_lower_container_frame.grid_propagate(0)
+        self.SI_lower_container_frame.pack(side='top',fill='both',expand=True)
+        self.SI_lower_container_frame.rowconfigure(0, weight=1)
+        self.SI_lower_container_frame.rowconfigure(1, weight=1)
+        self.SI_lower_container_frame.rowconfigure(2, weight=1)
+        self.SI_lower_container_frame.columnconfigure(0, weight=1)
 
-         #NAME FRAME ----------------
-         self.SI_name_frame = ctk.CTkFrame(self.SI_lower_container_frame, fg_color='#2b2b2b')
-         self.SI_name_frame.grid(column=0, row=0, sticky='s',pady=(0,10))
-         self.SI_name_label = ctk.CTkLabel(self.SI_name_frame, text = "Name:", font = ('Space Grotesk', 20, 'bold'))
-         self.SI_name_label.pack(side='top', anchor='w',padx=10, pady=5)
-         self.SI_name_entry = ctk.CTkEntry(self.SI_name_frame, placeholder_text='Enter schedule name...', font= ('Space Grotesk', 16), height = 60, width = 320)
-         self.SI_name_entry.pack(side='top', padx=5, pady=5)
-         self.SI_name_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.SI_name_entry))
+        #NAME FRAME ----------------
+        self.SI_name_frame = ctk.CTkFrame(self.SI_lower_container_frame, fg_color='#2b2b2b')
+        self.SI_name_frame.grid(column=0, row=0, sticky='s',pady=(0,10))
+        self.SI_name_label = ctk.CTkLabel(self.SI_name_frame, text = "Name:", font = ('Space Grotesk', 20, 'bold'))
+        self.SI_name_label.pack(side='top', anchor='w',padx=10, pady=5)
+        self.SI_name_entry = ctk.CTkEntry(self.SI_name_frame, placeholder_text='Enter schedule name...', font= ('Space Grotesk', 16), height = 60, width = 320)
+        self.SI_name_entry.pack(side='top', padx=5, pady=5)
+        self.SI_name_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.SI_name_entry))
 
-         #Schedule and Absence Frame
-         #SCHEDULE TYPE SELECITON
-         self.schedule_dict = {'Block':1, 'Traditional':0}
+        #Schedule and Absence Frame
+        #SCHEDULE TYPE SELECITON
+        self.schedule_dict = {'Block':1, 'Traditional':0}
 
-         self.SI_schedule_absence_frame = ctk.CTkFrame(self.SI_lower_container_frame, fg_color='#2b2b2b')
-         self.SI_schedule_absence_frame.grid(column=0, row=1, sticky='ns', pady=(20,0))
-
-         #SCHEDULE FRAME
-         self.SI_schedule_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
-         self.SI_schedule_label = ctk.CTkLabel(self.SI_schedule_frame, text = "Schedule Type:", font = ('Space Grotesk', 18, 'bold'))
-         self.SI_schedule_label.pack(padx=10,pady=5,side='top')
-         self.SI_schedule_combobox = ctk.CTkComboBox(self.SI_schedule_frame, values = ['Block', 'Traditional'], dropdown_font=('Space Grotesk', 25), state='readonly', height = 70, width=200, font=('Space Grotesk', 20, 'bold'))
-         self.SI_schedule_combobox.pack(padx=5,pady=5,side='top')
-         self.SI_schedule_combobox.bind("<Button-1>", partial(open_dropdown, self.SI_schedule_combobox))
-
-         #ABSENCE FRAME
-         self.SI_absence_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
-         self.SI_AF_minute_var= ctk.StringVar(value = '30')
-
-         self.SI_AF_title_label = ctk.CTkLabel(self.SI_absence_frame, text = "Absence Threshold\n(minutes)", font = ('Space Grotesk', 20, 'bold'))
-         self.SI_AF_title_label.grid(row=0, column=0,padx=5,pady=5)
-         self.SI_AF_value_label = ctk.CTkLabel(self.SI_absence_frame, text=f"{self.SI_AF_minute_var.get()}", font=('Space Grotesk', 18))
-         self.SI_AF_value_label.grid(row=1,column=0,padx=5,pady=5)
-
-         #ABSENCE MINUTE SELECTORS
-         self.PI_RF_absent_minute_up = ctk.CTkButton(self.SI_absence_frame, height=60,font=('Space Grotesk', 20, 'bold'),text="↑", command = lambda: self.change_minute(self.SI_AF_minute_var, +1))
-         self.PI_RF_absent_minute_up.grid(row=0, column=1,pady=5,padx=5)
-         self.PI_RF_absent_minute_down = ctk.CTkButton(self.SI_absence_frame, height = 60,font=('Space Grotesk', 20, 'bold'),text="↓", command = lambda: self.change_minute(self.SI_AF_minute_var, -1))
-         self.PI_RF_absent_minute_down.grid(row=1, column=1,pady=5,padx=5)
-
-         #ABSENCE UPDATE LABEL CODE
-         self.SI_AF_minute_var.trace_add("write", partial(self.update_label, self.SI_AF_minute_var, self.SI_AF_value_label))
-
-
-         #SUBMIT SCHEDULE FRAME
-         self.SI_submit_frame = ctk.CTkFrame(self.SI_lower_container_frame, fg_color='#2b2b2b')
-         self.SI_submit_frame.grid(column=0, row=2, sticky='nsew')
-         self.SI_submit_button = ctk.CTkButton(self.SI_submit_frame, width=300, height = 70, font=('Space Grotesk', 17, 'bold'))
-         self.SI_submit_button.pack(anchor='center')
-
-
-
-
-         #Setup new/edit period frame (input details or not/change title and submit button/display A or B or not) CLEAR ON SUBMIT 5
-         self.period_info_frame = ctk.CTkFrame(self)
-         self.period_info_frame.grid(row=0, column=0, sticky='nsew')
-
-         #TOP FRAME CREATION (PERIODS)
-         self.PI_top_frame = ctk.CTkFrame(self.period_info_frame, border_width=4,border_color='white')
-         self.PI_top_frame.pack(side='top',fill='x')
-         self.PTF_title_label = ctk.CTkLabel(self.PI_top_frame, font=('Space Grotesk', 30, 'bold'))
-         self.PTF_title_label.pack(anchor='center', pady=20)
-
-         #BACK BUTTON (period info)
-         self.PI_back_button = ctk.CTkButton(self.period_info_frame, image = self.back_button_image, text = '', height = 60, width = 100, command = lambda: self.tabSwap(2))
-         self.PI_back_button.place(rely=.01, relx =.79)
-
-         #BOTTOM FRAME CREATION (PERIODS)
-         self.PI_lower_container_frame = ctk.CTkFrame(self.period_info_frame)
-         self.PI_lower_container_frame.pack(side='top',fill='both',expand=True)
-         self.PI_lower_container_frame.columnconfigure(0, weight=1)
-         self.PI_lower_container_frame.columnconfigure(1, weight=1)
-         self.PI_lower_container_frame.rowconfigure(0, weight=1)
-
-         self.PI_left_frame = ctk.CTkFrame(self.PI_lower_container_frame, bg_color='#333333')
-         self.PI_left_frame.grid(row=0, column=0, sticky='nsew')
-
-         self.PI_right_frame = ctk.CTkFrame(self.PI_lower_container_frame, bg_color='#333333')
-         self.PI_right_frame.grid_propagate(0)
-         self.PI_right_frame.grid(row=0, column=1, sticky='nsew')
-         self.PI_right_frame.columnconfigure(0, weight=1)
-         self.PI_right_frame.rowconfigure(0, weight=1)
-         self.PI_right_frame.rowconfigure(1, weight=1)
-         self.PI_right_frame.rowconfigure(2, weight=1)
-
-
-         #LEFT FRAME (unpacked widgets, will be packed based off edit/non edit)
-         self.PI_LF_period_label = ctk.CTkLabel(self.PI_left_frame, text='Period Name:', font=('Space Grotesk', 20))
-         self.PI_LF_period_label.pack(side='top',pady=(30,10))
-         self.PI_LF_period_entry = ctk.CTkEntry(self.PI_left_frame, width = 320, placeholder_text='Enter period name...', font=('Space Grotesk', 16), placeholder_text_color='gray', height = 60)
-         self.PI_LF_period_entry.pack(side='top',pady=(5,20))
-         self.PI_LF_period_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.PI_LF_period_entry))
-
+        self.SI_schedule_absence_frame = ctk.CTkFrame(self.SI_lower_container_frame, fg_color='#2b2b2b')
+        self.SI_schedule_absence_frame.grid(column=0, row=1, sticky='ns', pady=(20,0))
+
+        #SCHEDULE FRAME
+        self.SI_schedule_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
+        self.SI_schedule_label = ctk.CTkLabel(self.SI_schedule_frame, text = "Schedule Type:", font = ('Space Grotesk', 18, 'bold'))
+        self.SI_schedule_label.pack(padx=10,pady=5,side='top')
+        self.SI_schedule_combobox = ctk.CTkComboBox(self.SI_schedule_frame, values = ['Block', 'Traditional'], dropdown_font=('Space Grotesk', 25), state='readonly', height = 70, width=200, font=('Space Grotesk', 20, 'bold'))
+        self.SI_schedule_combobox.pack(padx=5,pady=5,side='top')
+        self.SI_schedule_combobox.bind("<Button-1>", partial(open_dropdown, self.SI_schedule_combobox))
+
+        #ABSENCE FRAME
+        self.SI_absence_frame = ctk.CTkFrame(self.SI_schedule_absence_frame)
+        self.SI_AF_minute_var= ctk.StringVar(value = '30')
+
+        self.SI_AF_title_label = ctk.CTkLabel(self.SI_absence_frame, text = "Absence Threshold\n(minutes)", font = ('Space Grotesk', 20, 'bold'))
+        self.SI_AF_title_label.grid(row=0, column=0,padx=5,pady=5)
+        self.SI_AF_value_label = ctk.CTkLabel(self.SI_absence_frame, text=f"{self.SI_AF_minute_var.get()}", font=('Space Grotesk', 18))
+        self.SI_AF_value_label.grid(row=1,column=0,padx=5,pady=5)
+
+        #ABSENCE MINUTE SELECTORS
+        self.PI_RF_absent_minute_up = ctk.CTkButton(self.SI_absence_frame, height=60,font=('Space Grotesk', 20, 'bold'),text="↑", command = lambda: self.change_minute(self.SI_AF_minute_var, +1))
+        self.PI_RF_absent_minute_up.grid(row=0, column=1,pady=5,padx=5)
+        self.PI_RF_absent_minute_down = ctk.CTkButton(self.SI_absence_frame, height = 60,font=('Space Grotesk', 20, 'bold'),text="↓", command = lambda: self.change_minute(self.SI_AF_minute_var, -1))
+        self.PI_RF_absent_minute_down.grid(row=1, column=1,pady=5,padx=5)
+
+        #ABSENCE UPDATE LABEL CODE
+        self.SI_AF_minute_var.trace_add("write", partial(self.update_label, self.SI_AF_minute_var, self.SI_AF_value_label))
+
+
+        #SUBMIT SCHEDULE FRAME
+        self.SI_submit_frame = ctk.CTkFrame(self.SI_lower_container_frame, fg_color='#2b2b2b')
+        self.SI_submit_frame.grid(column=0, row=2, sticky='nsew')
+        self.SI_submit_button = ctk.CTkButton(self.SI_submit_frame, width=300, height = 70, font=('Space Grotesk', 17, 'bold'))
+        self.SI_submit_button.pack(anchor='center')
+
+
+
+
+        #Setup new/edit period frame (input details or not/change title and submit button/display A or B or not) CLEAR ON SUBMIT 5
+        self.period_info_frame = ctk.CTkFrame(self)
+        self.period_info_frame.grid(row=0, column=0, sticky='nsew')
+
+        #TOP FRAME CREATION (PERIODS)
+        self.PI_top_frame = ctk.CTkFrame(self.period_info_frame, border_width=4,border_color='white')
+        self.PI_top_frame.pack(side='top',fill='x')
+        self.PTF_title_label = ctk.CTkLabel(self.PI_top_frame, font=('Space Grotesk', 30, 'bold'))
+        self.PTF_title_label.pack(anchor='center', pady=20)
+
+        #BACK BUTTON (period info)
+        self.PI_back_button = ctk.CTkButton(self.period_info_frame, image = self.back_button_image, text = '', height = 60, width = 100, command = lambda: self.tabSwap(2))
+        self.PI_back_button.place(rely=.01, relx =.79)
+
+        #BOTTOM FRAME CREATION (PERIODS)
+        self.PI_lower_container_frame = ctk.CTkFrame(self.period_info_frame)
+        self.PI_lower_container_frame.pack(side='top',fill='both',expand=True)
+        self.PI_lower_container_frame.columnconfigure(0, weight=1)
+        self.PI_lower_container_frame.columnconfigure(1, weight=1)
+        self.PI_lower_container_frame.rowconfigure(0, weight=1)
+
+        self.PI_left_frame = ctk.CTkFrame(self.PI_lower_container_frame, bg_color='#333333')
+        self.PI_left_frame.grid(row=0, column=0, sticky='nsew')
+
+        self.PI_right_frame = ctk.CTkFrame(self.PI_lower_container_frame, bg_color='#333333')
+        self.PI_right_frame.grid_propagate(0)
+        self.PI_right_frame.grid(row=0, column=1, sticky='nsew')
+        self.PI_right_frame.columnconfigure(0, weight=1)
+        self.PI_right_frame.rowconfigure(0, weight=1)
+        self.PI_right_frame.rowconfigure(1, weight=1)
+        self.PI_right_frame.rowconfigure(2, weight=1)
+
+
+        #LEFT FRAME (unpacked widgets, will be packed based off edit/non edit)
+        self.PI_LF_period_label = ctk.CTkLabel(self.PI_left_frame, text='Period Name:', font=('Space Grotesk', 20))
+        self.PI_LF_period_label.pack(side='top',pady=(30,10))
+        self.PI_LF_period_entry = ctk.CTkEntry(self.PI_left_frame, width = 320, placeholder_text='Enter period name...', font=('Space Grotesk', 16), placeholder_text_color='gray', height = 60)
+        self.PI_LF_period_entry.pack(side='top',pady=(5,20))
+        self.PI_LF_period_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.PI_LF_period_entry))
+
 
-
-         self.PI_LF_edit_students_button = ctk.CTkButton(self.PI_left_frame, text='Edit Students',font=('Space Grotesk', 18), height = 60, width = 200)
-
-         self.PI_LF_daytype_label = ctk.CTkLabel(self.PI_left_frame, text='Daytype:', font=('Space Grotesk', 20))
-         self.PI_LF_daytype_segmented_button = ctk.CTkSegmentedButton(self.PI_left_frame, values=['A','B'], font=('Space Grotesk', 16, 'bold'), width=100, height = 60)
-
-
-         self.PI_LF_submit_button = ctk.CTkButton(self.PI_left_frame, width=180, height = 50, font=('Space Grotesk', 19, 'bold'))
-
-         #RIGHT FRAME (always packed time widgets, make sure to clear/set with editing)
-         #START FRAME -------------------------------------------------------------------------------------------
-         self.PI_RF_start_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
-         self.PI_RF_start_frame.grid_propagate(0)
-         self.PI_RF_start_frame.grid(row=0, column=0, sticky='nsew')
-         self.PI_RF_start_hour_var = ctk.StringVar(value = '12')
-         self.PI_RF_start_minute_var = ctk.StringVar(value = '00')
-
-         #START HOUR SELECTORS
-         self.PI_RF_start_hour_up = ctk.CTkButton(self.PI_RF_start_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_start_hour_var, +1))
-         self.PI_RF_start_hour_up.grid(row=0, column=0,pady=(25,5))
-         self.PI_RF_start_hour_down = ctk.CTkButton(self.PI_RF_start_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_start_hour_var, -1))
-         self.PI_RF_start_hour_down.grid(row=1, column=0,pady=(5,10))
-
-         #START MINUTE SELECTORS
-         self.PI_RF_start_minute_up = ctk.CTkButton(self.PI_RF_start_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_start_minute_var, +1))
-         self.PI_RF_start_minute_up.grid(row=0, column=2,pady=(25,5))
-         self.PI_RF_start_minute_down = ctk.CTkButton(self.PI_RF_start_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_start_minute_var, -1))
-         self.PI_RF_start_minute_down.grid(row=1, column=2,pady=(5,10))
-
-         #START LABELS
-         self.PI_RF_start_label = ctk.CTkLabel(self.PI_RF_start_frame, text='Start Time:', font=('Space Grotesk', 20, 'bold'))
-         self.PI_RF_start_label.grid(row=0, column=1,pady=5, padx=10)
-         self.PI_RF_start_value_label = ctk.CTkLabel(self.PI_RF_start_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_start_hour_var.get()}:{self.PI_RF_start_minute_var.get()}")
-         self.PI_RF_start_value_label.grid(row=1, column=1,pady=5)
-
-         #START UPDATE LABEL CODE
-         self.PI_RF_start_hour_var.trace_add("write", partial(self.update_label2, self.PI_RF_start_hour_var, self.PI_RF_start_minute_var, self.PI_RF_start_value_label))
-         self.PI_RF_start_minute_var.trace_add("write", partial(self.update_label2, self.PI_RF_start_hour_var, self.PI_RF_start_minute_var, self.PI_RF_start_value_label))
-
-         #END FRAME -------------------------------------------------------------------------------------------
-         self.PI_RF_end_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
-         self.PI_RF_end_frame.grid_propagate(0)
-         self.PI_RF_end_frame.grid(row=1, column=0, sticky='nsew')
+
+        self.PI_LF_edit_students_button = ctk.CTkButton(self.PI_left_frame, text='Edit Students',font=('Space Grotesk', 18), height = 60, width = 200)
+
+        self.PI_LF_daytype_label = ctk.CTkLabel(self.PI_left_frame, text='Daytype:', font=('Space Grotesk', 20))
+        self.PI_LF_daytype_segmented_button = ctk.CTkSegmentedButton(self.PI_left_frame, values=['A','B'], font=('Space Grotesk', 16, 'bold'), width=100, height = 60)
+
+
+        self.PI_LF_submit_button = ctk.CTkButton(self.PI_left_frame, width=180, height = 50, font=('Space Grotesk', 19, 'bold'))
+
+        #RIGHT FRAME (always packed time widgets, make sure to clear/set with editing)
+        #START FRAME -------------------------------------------------------------------------------------------
+        self.PI_RF_start_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
+        self.PI_RF_start_frame.grid_propagate(0)
+        self.PI_RF_start_frame.grid(row=0, column=0, sticky='nsew')
+        self.PI_RF_start_hour_var = ctk.StringVar(value = '12')
+        self.PI_RF_start_minute_var = ctk.StringVar(value = '00')
+
+        #START HOUR SELECTORS
+        self.PI_RF_start_hour_up = ctk.CTkButton(self.PI_RF_start_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_start_hour_var, +1))
+        self.PI_RF_start_hour_up.grid(row=0, column=0,pady=(25,5))
+        self.PI_RF_start_hour_down = ctk.CTkButton(self.PI_RF_start_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_start_hour_var, -1))
+        self.PI_RF_start_hour_down.grid(row=1, column=0,pady=(5,10))
+
+        #START MINUTE SELECTORS
+        self.PI_RF_start_minute_up = ctk.CTkButton(self.PI_RF_start_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_start_minute_var, +1))
+        self.PI_RF_start_minute_up.grid(row=0, column=2,pady=(25,5))
+        self.PI_RF_start_minute_down = ctk.CTkButton(self.PI_RF_start_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_start_minute_var, -1))
+        self.PI_RF_start_minute_down.grid(row=1, column=2,pady=(5,10))
+
+        #START LABELS
+        self.PI_RF_start_label = ctk.CTkLabel(self.PI_RF_start_frame, text='Start Time:', font=('Space Grotesk', 20, 'bold'))
+        self.PI_RF_start_label.grid(row=0, column=1,pady=5, padx=10)
+        self.PI_RF_start_value_label = ctk.CTkLabel(self.PI_RF_start_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_start_hour_var.get()}:{self.PI_RF_start_minute_var.get()}")
+        self.PI_RF_start_value_label.grid(row=1, column=1,pady=5)
+
+        #START UPDATE LABEL CODE
+        self.PI_RF_start_hour_var.trace_add("write", partial(self.update_label2, self.PI_RF_start_hour_var, self.PI_RF_start_minute_var, self.PI_RF_start_value_label))
+        self.PI_RF_start_minute_var.trace_add("write", partial(self.update_label2, self.PI_RF_start_hour_var, self.PI_RF_start_minute_var, self.PI_RF_start_value_label))
+
+        #END FRAME -------------------------------------------------------------------------------------------
+        self.PI_RF_end_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
+        self.PI_RF_end_frame.grid_propagate(0)
+        self.PI_RF_end_frame.grid(row=1, column=0, sticky='nsew')
 
-         self.PI_RF_end_hour_var = ctk.StringVar(value = '12')
-         self.PI_RF_end_minute_var = ctk.StringVar(value = '00')
+        self.PI_RF_end_hour_var = ctk.StringVar(value = '12')
+        self.PI_RF_end_minute_var = ctk.StringVar(value = '00')
 
-         #END HOUR SELECTORS
-         self.PI_RF_end_hour_up = ctk.CTkButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, +1))
-         self.PI_RF_end_hour_up.grid(row=2, column=0,pady=(25,5))
-         self.PI_RF_end_hour_down = ctk.CTkButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, -1))
-         self.PI_RF_end_hour_down.grid(row=3, column=0,pady=(5,10))
-
-         #END MINUTE SELECTORS
-         self.PI_RF_end_minute_up = ctk.CTkButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, +1))
-         self.PI_RF_end_minute_up.grid(row=2, column=2,pady=(25,5))
-         self.PI_RF_end_minute_down = ctk.CTkButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, -1))
-         self.PI_RF_end_minute_down.grid(row=3, column=2,pady=(5,10))
+        #END HOUR SELECTORS
+        self.PI_RF_end_hour_up = ctk.CTkButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, +1))
+        self.PI_RF_end_hour_up.grid(row=2, column=0,pady=(25,5))
+        self.PI_RF_end_hour_down = ctk.CTkButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, -1))
+        self.PI_RF_end_hour_down.grid(row=3, column=0,pady=(5,10))
+
+        #END MINUTE SELECTORS
+        self.PI_RF_end_minute_up = ctk.CTkButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, +1))
+        self.PI_RF_end_minute_up.grid(row=2, column=2,pady=(25,5))
+        self.PI_RF_end_minute_down = ctk.CTkButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, -1))
+        self.PI_RF_end_minute_down.grid(row=3, column=2,pady=(5,10))
 
-         #END LABELS
-         self.PI_RF_end_label = ctk.CTkLabel(self.PI_RF_end_frame, text='End Time:', font=('Space Grotesk', 20, 'bold'))
-         self.PI_RF_end_label.grid(row=2, column=1,pady=5,padx=10)
-         self.PI_RF_end_value_label = ctk.CTkLabel(self.PI_RF_end_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_end_hour_var.get()}:{self.PI_RF_end_minute_var.get()}")
-         self.PI_RF_end_value_label.grid(row=3, column=1, pady=5)
-
-         #END UPDATE LABEL CODE
-         self.PI_RF_end_hour_var.trace_add("write", partial(self.update_label2, self.PI_RF_end_hour_var, self.PI_RF_end_minute_var, self.PI_RF_end_value_label))
-         self.PI_RF_end_minute_var.trace_add("write", partial(self.update_label2, self.PI_RF_end_hour_var, self.PI_RF_end_minute_var, self.PI_RF_end_value_label))
-
-         #TARDY FRAME -------------------------------------------------------------------------------------------
-         self.PI_RF_tardy_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
-         self.PI_RF_tardy_frame.grid_propagate(0)
-         self.PI_RF_tardy_frame.grid(row=2, column=0, sticky='nsew')
-
-         self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
-
-         #TARDY MINUTE SELECTORS
-         self.PI_RF_tardy_minute_up = ctk.CTkButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
-         self.PI_RF_tardy_minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
-         self.PI_RF_tardy_minute_down = ctk.CTkButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
-         self.PI_RF_tardy_minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
-
-         #TARDY LABELS
-         self.PI_RF_tardy_label = ctk.CTkLabel(self.PI_RF_tardy_frame, text='Tardy Threshold:', font=('Space Grotesk', 20, 'bold'))
-         self.PI_RF_tardy_label.grid(row=4, column=1,pady=5,padx=10)
-         self.PI_RF_tardy_value_label = ctk.CTkLabel(self.PI_RF_tardy_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_tardy_minute_var.get()}")
-         self.PI_RF_tardy_value_label.grid(row=5,column=1,pady=5)
-
-         #TARDY UPDATE LABEL CODE
-         self.PI_RF_tardy_minute_var.trace_add("write", partial(self.update_label, self.PI_RF_tardy_minute_var, self.PI_RF_tardy_value_label))
-
+        #END LABELS
+        self.PI_RF_end_label = ctk.CTkLabel(self.PI_RF_end_frame, text='End Time:', font=('Space Grotesk', 20, 'bold'))
+        self.PI_RF_end_label.grid(row=2, column=1,pady=5,padx=10)
+        self.PI_RF_end_value_label = ctk.CTkLabel(self.PI_RF_end_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_end_hour_var.get()}:{self.PI_RF_end_minute_var.get()}")
+        self.PI_RF_end_value_label.grid(row=3, column=1, pady=5)
+
+        #END UPDATE LABEL CODE
+        self.PI_RF_end_hour_var.trace_add("write", partial(self.update_label2, self.PI_RF_end_hour_var, self.PI_RF_end_minute_var, self.PI_RF_end_value_label))
+        self.PI_RF_end_minute_var.trace_add("write", partial(self.update_label2, self.PI_RF_end_hour_var, self.PI_RF_end_minute_var, self.PI_RF_end_value_label))
+
+        #TARDY FRAME -------------------------------------------------------------------------------------------
+        self.PI_RF_tardy_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
+        self.PI_RF_tardy_frame.grid_propagate(0)
+        self.PI_RF_tardy_frame.grid(row=2, column=0, sticky='nsew')
+
+        self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
+
+        #TARDY MINUTE SELECTORS
+        self.PI_RF_tardy_minute_up = ctk.CTkButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
+        self.PI_RF_tardy_minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
+        self.PI_RF_tardy_minute_down = ctk.CTkButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
+        self.PI_RF_tardy_minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
+
+        #TARDY LABELS
+        self.PI_RF_tardy_label = ctk.CTkLabel(self.PI_RF_tardy_frame, text='Tardy Threshold:', font=('Space Grotesk', 20, 'bold'))
+        self.PI_RF_tardy_label.grid(row=4, column=1,pady=5,padx=10)
+        self.PI_RF_tardy_value_label = ctk.CTkLabel(self.PI_RF_tardy_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_tardy_minute_var.get()}")
+        self.PI_RF_tardy_value_label.grid(row=5,column=1,pady=5)
+
+        #TARDY UPDATE LABEL CODE
+        self.PI_RF_tardy_minute_var.trace_add("write", partial(self.update_label, self.PI_RF_tardy_minute_var, self.PI_RF_tardy_value_label))
+
 
 
 
 
-         #Setup weekday frame (make a function populate schedule list on each open and weekdays on each selection) 6
-         self.select_weekdays_frame = ctk.CTkFrame(self)
-         self.select_weekdays_frame.grid(row=0, column=0, sticky='nsew')
+        #Setup weekday frame (make a function populate schedule list on each open and weekdays on each selection) 6
+        self.select_weekdays_frame = ctk.CTkFrame(self)
+        self.select_weekdays_frame.grid(row=0, column=0, sticky='nsew')
 
-         #TOP BAR (weekday frame)
-         self.SW_top_frame = ctk.CTkFrame(self.select_weekdays_frame, border_width=4,border_color='white')
-         self.SW_top_frame.pack(side='top',fill='x')
+        #TOP BAR (weekday frame)
+        self.SW_top_frame = ctk.CTkFrame(self.select_weekdays_frame, border_width=4,border_color='white')
+        self.SW_top_frame.pack(side='top',fill='x')
 
-         self.SW_TF_title_frame = ctk.CTkFrame(self.SW_top_frame, height = 100,fg_color='#2b2b2b',)
-         self.SW_TF_title_frame.pack(anchor='center', pady=8)
-         self.SW_title_label = ctk.CTkLabel(self.SW_TF_title_frame, font=('Space Grotesk', 28, 'bold'), text = 'Weekday Assignment:')
-         self.SW_title_label.pack(side='left', pady=10,padx=20)
-
-         #COMBOBOX (updates values every time weekday frame is displayed)
-         self.SW_schedule_dict = {}
-         self.SW_schedule_type = None
-         self.SW_schedule_combobox = ctk.CTkComboBox(self.SW_TF_title_frame, width=350,height = 60,dropdown_font=('Space Grotesk', 25), font=('Space Grotesk', 24, 'bold'), command = self.populate_weekday_frame, state="readonly")
-         self.SW_schedule_combobox.pack(side='left', padx=20)
-         self.SW_schedule_combobox.bind("<Button-1>", partial(open_dropdown, self.SW_schedule_combobox))
-
-         #LOWER FRAME CONTAINER (weekday frame)
-         self.SW_lower_container_frame = ctk.CTkFrame(self.select_weekdays_frame)
-         self.SW_lower_container_frame.pack(side='top',fill='both',expand=True)
-
-         #WEEKDAY SETUP
-         weekday_list = ("Monday:", "Tuesday:", "Wednesday:", "Thursday:", "Friday:", "Saturday:", "Sunday:")
-         self.weekday_dict = {}
-         for index, day in enumerate(weekday_list):
-             ctk.CTkLabel(self.SW_lower_container_frame, text = day, font=('Space Grotesk', 19)).grid(column=0, row = index, pady=10,padx=(250,10))
-             checkbox_var = ctk.IntVar(value = 0)
-             checkbox = ctk.CTkCheckBox(self.SW_lower_container_frame,text='',checkbox_width=50, checkbox_height=50, variable = checkbox_var,command = partial(self.display_weekday_daytype, index, checkbox_var))
-             combobox = ctk.CTkComboBox(self.SW_lower_container_frame, width = 200, height = 50, state='readonly',values = ['A', 'B', 'Dynamic'], font = ('Space Grotesk', 18), dropdown_font=('Space Grotesk', 25))
-             checkbox.grid(row=index, column=1, padx=5,pady=10)
-             combobox.bind("<Button-1>", partial(open_dropdown, combobox))
-             self.weekday_dict[index] = (checkbox, combobox)
-
-         #WEEKDAY SUBMIT BUTTON
-         self.SW_submit_button = ctk.CTkButton(self.SW_lower_container_frame, width = 180, height = 300, text='Submit', font=('Space Grotesk', 25, 'bold'))
-         self.SW_submit_button.grid(row=1, column=3, rowspan=5, padx=(60,0))
-
-
-
-
-
+        self.SW_TF_title_frame = ctk.CTkFrame(self.SW_top_frame, height = 100,fg_color='#2b2b2b',)
+        self.SW_TF_title_frame.pack(anchor='center', pady=8)
+        self.SW_title_label = ctk.CTkLabel(self.SW_TF_title_frame, font=('Space Grotesk', 28, 'bold'), text = 'Weekday Assignment:')
+        self.SW_title_label.pack(side='left', pady=10,padx=20)
+
+        #COMBOBOX (updates values every time weekday frame is displayed)
+        self.SW_schedule_dict = {}
+        self.SW_schedule_type = None
+        self.SW_schedule_combobox = ctk.CTkComboBox(self.SW_TF_title_frame, width=350,height = 60,dropdown_font=('Space Grotesk', 25), font=('Space Grotesk', 24, 'bold'), command = self.populate_weekday_frame, state="readonly")
+        self.SW_schedule_combobox.pack(side='left', padx=20)
+        self.SW_schedule_combobox.bind("<Button-1>", partial(open_dropdown, self.SW_schedule_combobox))
+
+        #LOWER FRAME CONTAINER (weekday frame)
+        self.SW_lower_container_frame = ctk.CTkFrame(self.select_weekdays_frame)
+        self.SW_lower_container_frame.pack(side='top',fill='both',expand=True)
+
+        #WEEKDAY SETUP
+        weekday_list = ("Monday:", "Tuesday:", "Wednesday:", "Thursday:", "Friday:", "Saturday:", "Sunday:")
+        self.weekday_dict = {}
+        for index, day in enumerate(weekday_list):
+            ctk.CTkLabel(self.SW_lower_container_frame, text = day, font=('Space Grotesk', 19)).grid(column=0, row = index, pady=10,padx=(250,10))
+            checkbox_var = ctk.IntVar(value = 0)
+            checkbox = ctk.CTkCheckBox(self.SW_lower_container_frame,text='',checkbox_width=50, checkbox_height=50, variable = checkbox_var,command = partial(self.display_weekday_daytype, index, checkbox_var))
+            combobox = ctk.CTkComboBox(self.SW_lower_container_frame, width = 200, height = 50, state='readonly',values = ['A', 'B', 'Dynamic'], font = ('Space Grotesk', 18), dropdown_font=('Space Grotesk', 25))
+            checkbox.grid(row=index, column=1, padx=5,pady=10)
+            combobox.bind("<Button-1>", partial(open_dropdown, combobox))
+            self.weekday_dict[index] = (checkbox, combobox)
+
+        #WEEKDAY SUBMIT BUTTON
+        self.SW_submit_button = ctk.CTkButton(self.SW_lower_container_frame, width = 180, height = 300, text='Submit', font=('Space Grotesk', 25, 'bold'))
+        self.SW_submit_button.grid(row=1, column=3, rowspan=5, padx=(60,0))
+
+
+
+
+
 
-         #Setup student assignment frame (specific to each period) 7
-         self.student_period_selection_frame = ctk.CTkFrame(self)
-         self.student_period_selection_frame.grid(row=0, column=0, sticky='nsew')
+        #Setup student assignment frame (specific to each period) 7
+        self.student_period_selection_frame = ctk.CTkFrame(self)
+        self.student_period_selection_frame.grid(row=0, column=0, sticky='nsew')
 
-         #TOP FRAME CREATION (STUDENT ASSIGNMENT)
-         self.SA_top_frame = ctk.CTkFrame(self.student_period_selection_frame, border_width=4,border_color='white')
-         self.SA_top_frame.pack(side='top',fill='x')
-         self.SA_title_label = ctk.CTkLabel(self.SA_top_frame, font=('Space Grotesk', 30, 'bold'))
-         self.SA_title_label.pack(anchor='center', pady=20)
+        #TOP FRAME CREATION (STUDENT ASSIGNMENT)
+        self.SA_top_frame = ctk.CTkFrame(self.student_period_selection_frame, border_width=4,border_color='white')
+        self.SA_top_frame.pack(side='top',fill='x')
+        self.SA_title_label = ctk.CTkLabel(self.SA_top_frame, font=('Space Grotesk', 30, 'bold'))
+        self.SA_title_label.pack(anchor='center', pady=20)
 
-         #BACK BUTTON (student assignment)
-         self.SA_back_button = ctk.CTkButton(self.student_period_selection_frame, image = self.back_button_image, text = '', height = 60, width = 100, command = lambda: self.tabSwap(5))
-         self.SA_back_button.place(rely=.01, relx =.79)
+        #BACK BUTTON (student assignment)
+        self.SA_back_button = ctk.CTkButton(self.student_period_selection_frame, image = self.back_button_image, text = '', height = 60, width = 100, command = lambda: self.tabSwap(5))
+        self.SA_back_button.place(rely=.01, relx =.79)
 
-         #BOTTOM FRAME CREATION (STUDENT ASSIGNMENT)
-         self.SA_lower_container_frame = ctk.CTkFrame(self.student_period_selection_frame)
-         self.SA_lower_container_frame.pack(side='top',fill='both',expand=True)
+        #BOTTOM FRAME CREATION (STUDENT ASSIGNMENT)
+        self.SA_lower_container_frame = ctk.CTkFrame(self.student_period_selection_frame)
+        self.SA_lower_container_frame.pack(side='top',fill='both',expand=True)
 
-         self.SA_lower_container_frame.columnconfigure(0, weight=1)
-         self.SA_lower_container_frame.columnconfigure(1, weight=1)
-         self.SA_lower_container_frame.rowconfigure(0, weight=3)
-         self.SA_lower_container_frame.rowconfigure(1, weight=1)
+        self.SA_lower_container_frame.columnconfigure(0, weight=1)
+        self.SA_lower_container_frame.columnconfigure(1, weight=1)
+        self.SA_lower_container_frame.rowconfigure(0, weight=3)
+        self.SA_lower_container_frame.rowconfigure(1, weight=1)
 
-         #BOTTOM SCROLLABLE FRAME DICTIONARIES
-         self.SA_MSF_student_dict = {}
-         self.SA_PSF_student_dict = {}
+        #BOTTOM SCROLLABLE FRAME DICTIONARIES
+        self.SA_MSF_student_dict = {}
+        self.SA_PSF_student_dict = {}
 
-         #BOTTOM FRAME SCROLLABLE FRAMES (empty until populated with students each time, also update period label each time)
-         self.SA_master_scrollable_frame = ctk.CTkScrollableFrame(self.SA_lower_container_frame,label_text='Student Registry', label_font=('Space Grotesk', 20, 'bold'))
-         enable_swipe_scroll(self.SA_master_scrollable_frame)
-         self.SA_master_scrollable_frame.grid(row=0, column=0, sticky='nsew', padx=(100,10), pady=20)
-         self.SA_master_scrollable_frame._scrollbar.configure(width=25)
-         self.SA_master_scrollable_frame.columnconfigure(0, weight=1)
-         self.SA_master_scrollable_frame.columnconfigure(1, weight=1)
+        #BOTTOM FRAME SCROLLABLE FRAMES (empty until populated with students each time, also update period label each time)
+        self.SA_master_scrollable_frame = ctk.CTkScrollableFrame(self.SA_lower_container_frame,label_text='Student Registry', label_font=('Space Grotesk', 20, 'bold'))
+        enable_swipe_scroll(self.SA_master_scrollable_frame)
+        self.SA_master_scrollable_frame.grid(row=0, column=0, sticky='nsew', padx=(100,10), pady=20)
+        self.SA_master_scrollable_frame._scrollbar.configure(width=25)
+        self.SA_master_scrollable_frame.columnconfigure(0, weight=1)
+        self.SA_master_scrollable_frame.columnconfigure(1, weight=1)
 
 
-         self.SA_period_scrollable_frame = ctk.CTkScrollableFrame(self.SA_lower_container_frame, label_font=('Space Grotesk', 20, 'bold'))
-         enable_swipe_scroll(self.SA_period_scrollable_frame)
-         self.SA_period_scrollable_frame.grid(row=0, column=1, sticky='nsew', padx=10, pady=20)
-         self.SA_period_scrollable_frame._scrollbar.configure(width=25)
-         self.SA_period_scrollable_frame.columnconfigure(0, weight=1)
-         self.SA_period_scrollable_frame.columnconfigure(1, weight=1)
+        self.SA_period_scrollable_frame = ctk.CTkScrollableFrame(self.SA_lower_container_frame, label_font=('Space Grotesk', 20, 'bold'))
+        enable_swipe_scroll(self.SA_period_scrollable_frame)
+        self.SA_period_scrollable_frame.grid(row=0, column=1, sticky='nsew', padx=10, pady=20)
+        self.SA_period_scrollable_frame._scrollbar.configure(width=25)
+        self.SA_period_scrollable_frame.columnconfigure(0, weight=1)
+        self.SA_period_scrollable_frame.columnconfigure(1, weight=1)
 
 
-         #SCROLLABLE FRAME SELECT/DESELECT ALL BUTTONS
-         self.SA_master_select_all_button = ctk.CTkButton(self.SA_master_scrollable_frame, height = 60, text='Select All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_MSF_student_dict, True)).grid(row=0, column=0, sticky='new', padx=7, pady=5)
-         self.SA_master_deselect_all_button = ctk.CTkButton(self.SA_master_scrollable_frame, height = 60, text='Deselect All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_MSF_student_dict, False)).grid(row=0, column=1, sticky='new', padx=7, pady=5)
+        #SCROLLABLE FRAME SELECT/DESELECT ALL BUTTONS
+        self.SA_master_select_all_button = ctk.CTkButton(self.SA_master_scrollable_frame, height = 60, text='Select All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_MSF_student_dict, True)).grid(row=0, column=0, sticky='new', padx=7, pady=5)
+        self.SA_master_deselect_all_button = ctk.CTkButton(self.SA_master_scrollable_frame, height = 60, text='Deselect All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_MSF_student_dict, False)).grid(row=0, column=1, sticky='new', padx=7, pady=5)
 
-         self.SA_period_select_all_button = ctk.CTkButton(self.SA_period_scrollable_frame, height = 60, text='Select All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_PSF_student_dict, True)).grid(row=0, column=0, sticky='new', padx=7, pady=5)
-         self.SA_period_deselect_all_button = ctk.CTkButton(self.SA_period_scrollable_frame, height = 60, text='Deselect All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_PSF_student_dict, False)).grid(row=0, column=1, sticky='new', padx=7, pady=5)
+        self.SA_period_select_all_button = ctk.CTkButton(self.SA_period_scrollable_frame, height = 60, text='Select All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_PSF_student_dict, True)).grid(row=0, column=0, sticky='new', padx=7, pady=5)
+        self.SA_period_deselect_all_button = ctk.CTkButton(self.SA_period_scrollable_frame, height = 60, text='Deselect All', font=('Space Grotesk', 18, 'bold'),command = lambda: self.update_SA_checkboxes(self.SA_PSF_student_dict, False)).grid(row=0, column=1, sticky='new', padx=7, pady=5)
 
 
-         #BOTTOM FRAME BUTTONS (commands will need to be updated each time with new period_IDs: add new student to period and reload period frame)
-         self.SA_assign_button = ctk.CTkButton(self.SA_lower_container_frame, text='Assign To Period', font=('Space Grotesk', 18), fg_color='green', height = 60, width = 200)
-         self.SA_assign_button.grid(row=1, column=0, sticky='n', pady=10,padx=(70,0))
-         self.SA_remove_button = ctk.CTkButton(self.SA_lower_container_frame, text='Remove From Period', font=('Space Grotesk', 18), fg_color='red', height = 60, width = 200)
-         self.SA_remove_button.grid(row=1, column=1, sticky='n', pady=10)
+        #BOTTOM FRAME BUTTONS (commands will need to be updated each time with new period_IDs: add new student to period and reload period frame)
+        self.SA_assign_button = ctk.CTkButton(self.SA_lower_container_frame, text='Assign To Period', font=('Space Grotesk', 18), fg_color='green', height = 60, width = 200)
+        self.SA_assign_button.grid(row=1, column=0, sticky='n', pady=10,padx=(70,0))
+        self.SA_remove_button = ctk.CTkButton(self.SA_lower_container_frame, text='Remove From Period', font=('Space Grotesk', 18), fg_color='red', height = 60, width = 200)
+        self.SA_remove_button.grid(row=1, column=1, sticky='n', pady=10)
 
 
-         #SUCCESS POPUP (successful addition/removal of students from period notice)
-         self.SA_success_notice = ctk.CTkFrame(self.student_period_selection_frame, border_width=4,border_color='white')
-         self.SA_SN_title_label = ctk.CTkLabel(self.SA_success_notice, text='Success!', font=('Space Grotesk', 22, 'bold'), text_color='green')
-         self.SA_SN_title_label.pack(side='top',anchor='center',pady=(20,10),padx=20)
-         self.SA_SN_label = ctk.CTkLabel(self.SA_success_notice, font=("Space Grotesk", 15), wraplength=sWidth/2-40, justify='left')
-         self.SA_SN_label.pack(side='top',anchor='center',pady=10,padx=30)
-         self.SA_SN_overlap_label = ctk.CTkLabel(self.SA_success_notice, font=("Space Grotesk", 15), text_color='red',wraplength=sWidth/2-40, justify='left')
-         self.SA_SN_overlap_label.pack(side='top',anchor='center',pady=10,padx=30)
-         self.SA_SN_exit_button = ctk.CTkButton(self.SA_success_notice, text='X', height = 70, width = 200, font=("Space Grotesk", 20, 'bold'), command = lambda: self.SA_success_notice.place_forget())
-         self.SA_SN_exit_button.pack(side='top', anchor='center',pady=15,padx=20)
+        #SUCCESS POPUP (successful addition/removal of students from period notice)
+        self.SA_success_notice = ctk.CTkFrame(self.student_period_selection_frame, border_width=4,border_color='white')
+        self.SA_SN_title_label = ctk.CTkLabel(self.SA_success_notice, text='Success!', font=('Space Grotesk', 22, 'bold'), text_color='green')
+        self.SA_SN_title_label.pack(side='top',anchor='center',pady=(20,10),padx=20)
+        self.SA_SN_label = ctk.CTkLabel(self.SA_success_notice, font=("Space Grotesk", 15), wraplength=sWidth/2-40, justify='left')
+        self.SA_SN_label.pack(side='top',anchor='center',pady=10,padx=30)
+        self.SA_SN_overlap_label = ctk.CTkLabel(self.SA_success_notice, font=("Space Grotesk", 15), text_color='red',wraplength=sWidth/2-40, justify='left')
+        self.SA_SN_overlap_label.pack(side='top',anchor='center',pady=10,padx=30)
+        self.SA_SN_exit_button = ctk.CTkButton(self.SA_success_notice, text='X', height = 70, width = 200, font=("Space Grotesk", 20, 'bold'), command = lambda: self.SA_success_notice.place_forget())
+        self.SA_SN_exit_button.pack(side='top', anchor='center',pady=15,padx=20)
 
 
-         #CREATE tab selector frame (make animation logic based on arrow, not a popup, keep separate)
-         #CONTROL VARIABLES
-         self.control_frame_width = sWidth/3.5
-         self.CF_hidden_visibility_width = self.control_frame_width*.3125
-         self.CF_visible = False
+        #CREATE tab selector frame (make animation logic based on arrow, not a popup, keep separate)
+        #CONTROL VARIABLES
+        self.control_frame_width = sWidth/3.5
+        self.CF_hidden_visibility_width = self.control_frame_width*.3125
+        self.CF_visible = False
 
-         self.left_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/left.png"), size=(50,50))
-         self.right_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/right.png"), size=(50,50))
+        self.left_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/left.png"), size=(50,50))
+        self.right_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/right.png"), size=(50,50))
 
-         self.add_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/add.png"), size=(45,45))
-         self.manage_schedules = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/manage_schedules.png"), size=(45,45))
-         self.weekday_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/weekday.png"), size=(45,53))
+        self.add_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/add.png"), size=(45,45))
+        self.manage_schedules = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/manage_schedules.png"), size=(45,45))
+        self.weekday_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/weekday.png"), size=(45,53))
 
-         #CONTROL FRAME
-         self.control_frame = ctk.CTkFrame(self, width = self.control_frame_width, height=sHeight)
-         self.control_frame.pack_propagate(0)
-         self.control_frame.place(x=-(self.control_frame_width-self.CF_hidden_visibility_width), y=0)
+        #CONTROL FRAME
+        self.control_frame = ctk.CTkFrame(self, width = self.control_frame_width, height=sHeight)
+        self.control_frame.pack_propagate(0)
+        self.control_frame.place(x=-(self.control_frame_width-self.CF_hidden_visibility_width), y=0)
 
-         #CONTROL BUTTONS
-         self.CF_display_button = ctk.CTkButton(self.control_frame, text="", border_width=1, border_color='gray',image = self.right_image,command=self.toggle_control_frame,font=('Space Grotesk', 25, 'bold'),width=self.CF_hidden_visibility_width , height=90, fg_color='#1f6aa5', bg_color='#2b2b2b')
-         self.CF_display_button.pack(side='top',anchor='e',pady=(1,10),padx=1)
+        #CONTROL BUTTONS
+        self.CF_display_button = ctk.CTkButton(self.control_frame, text="", border_width=1, border_color='gray',image = self.right_image,command=self.toggle_control_frame,font=('Space Grotesk', 25, 'bold'),width=self.CF_hidden_visibility_width , height=90, fg_color='#1f6aa5', bg_color='#2b2b2b')
+        self.CF_display_button.pack(side='top',anchor='e',pady=(1,10),padx=1)
 
-         self.create_schedule = ctk.CTkButton(self.control_frame, font=("Space Grotesk", 16, 'bold'),text='',width = self.control_frame_width/4, height = self.CF_hidden_visibility_width-15, fg_color='#222222', image = self.add_image, compound='top', command = self.display_schedule_info)
-         self.create_schedule.pack(side='top',anchor='e',pady=(50,30),padx=8)
+        self.create_schedule = ctk.CTkButton(self.control_frame, font=("Space Grotesk", 16, 'bold'),text='',width = self.control_frame_width/4, height = self.CF_hidden_visibility_width-15, fg_color='#222222', image = self.add_image, compound='top', command = self.display_schedule_info)
+        self.create_schedule.pack(side='top',anchor='e',pady=(50,30),padx=8)
 
-         self.manage_schedule = ctk.CTkButton(self.control_frame, font=("Space Grotesk", 16, 'bold'), text='', width = self.control_frame_width/4, height = self.CF_hidden_visibility_width-15, fg_color='#222222', image = self.manage_schedules, compound='top', command = self.display_schedule_list)
-         self.manage_schedule.pack(side='top',anchor='e',pady=30,padx=8)
+        self.manage_schedule = ctk.CTkButton(self.control_frame, font=("Space Grotesk", 16, 'bold'), text='', width = self.control_frame_width/4, height = self.CF_hidden_visibility_width-15, fg_color='#222222', image = self.manage_schedules, compound='top', command = self.display_schedule_list)
+        self.manage_schedule.pack(side='top',anchor='e',pady=30,padx=8)
 
-         self.weekday_assignment = ctk.CTkButton(self.control_frame, font=("Space Grotesk", 16, 'bold'), text='', width = self.control_frame_width/4, height = self.CF_hidden_visibility_width-15, fg_color='#222222', image = self.weekday_image, compound = 'top', command = self.display_weekday_frame)
-         self.weekday_assignment.pack(side='top',anchor='e',pady=30,padx=8)
+        self.weekday_assignment = ctk.CTkButton(self.control_frame, font=("Space Grotesk", 16, 'bold'), text='', width = self.control_frame_width/4, height = self.CF_hidden_visibility_width-15, fg_color='#222222', image = self.weekday_image, compound = 'top', command = self.display_weekday_frame)
+        self.weekday_assignment.pack(side='top',anchor='e',pady=30,padx=8)
 
 
 
 
 
-         #CREATE exit button (always placed)
-         self.exit_button = ctk.CTkButton(self, text='X', font=("Space Grotesk", 26, 'bold'),command=self.exit_schedule_setup, height = 60, width = 100)
-         self.exit_button.place(relx=.895,rely=.01)
+        #CREATE exit button (always placed)
+        self.exit_button = ctk.CTkButton(self, text='X', font=("Space Grotesk", 26, 'bold'),command=self.exit_schedule_setup, height = 60, width = 100)
+        self.exit_button.place(relx=.895,rely=.01)
 
-         #TARDY FRAME -------------------------------------------------------------------------------------------
-         self.PI_RF_tardy_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
-         self.PI_RF_tardy_frame.grid_propagate(0)
-         self.PI_RF_tardy_frame.grid(row=2, column=0, sticky='nsew')
+        #TARDY FRAME -------------------------------------------------------------------------------------------
+        self.PI_RF_tardy_frame = ctk.CTkFrame(self.PI_right_frame, fg_color='#333333')
+        self.PI_RF_tardy_frame.grid_propagate(0)
+        self.PI_RF_tardy_frame.grid(row=2, column=0, sticky='nsew')
 
-         self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
+        self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
 
-         #TARDY MINUTE SELECTORS
-         self.PI_RF_tardy_minute_up = ctk.CTkButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
-         self.PI_RF_tardy_minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
-         self.PI_RF_tardy_minute_down = ctk.CTkButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
-         self.PI_RF_tardy_minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
+        #TARDY MINUTE SELECTORS
+        self.PI_RF_tardy_minute_up = ctk.CTkButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
+        self.PI_RF_tardy_minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
+        self.PI_RF_tardy_minute_down = ctk.CTkButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
+        self.PI_RF_tardy_minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
 
-         #TARDY LABELS
-         self.PI_RF_tardy_label = ctk.CTkLabel(self.PI_RF_tardy_frame, text='Tardy Threshold:', font=('Space Grotesk', 20, 'bold'))
-         self.PI_RF_tardy_label.grid(row=4, column=1,pady=5,padx=10)
-         self.PI_RF_tardy_value_label = ctk.CTkLabel(self.PI_RF_tardy_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_tardy_minute_var.get()}")
-         self.PI_RF_tardy_value_label.grid(row=5,column=1,pady=5)
+        #TARDY LABELS
+        self.PI_RF_tardy_label = ctk.CTkLabel(self.PI_RF_tardy_frame, text='Tardy Threshold:', font=('Space Grotesk', 20, 'bold'))
+        self.PI_RF_tardy_label.grid(row=4, column=1,pady=5,padx=10)
+        self.PI_RF_tardy_value_label = ctk.CTkLabel(self.PI_RF_tardy_frame, font = ('Space Grotesk', 18, 'bold'), text=f"{self.PI_RF_tardy_minute_var.get()}")
+        self.PI_RF_tardy_value_label.grid(row=5,column=1,pady=5)
 
-         #TARDY UPDATE LABEL CODE
-         self.PI_RF_tardy_minute_var.trace_add("write", partial(self.update_label, self.PI_RF_tardy_minute_var, self.PI_RF_tardy_value_label))
-     #UPDATE ALL LABELS
-     def update_label(self, var, label, *args):
-         label.configure(text=var.get())
+        #TARDY UPDATE LABEL CODE
+        self.PI_RF_tardy_minute_var.trace_add("write", partial(self.update_label, self.PI_RF_tardy_minute_var, self.PI_RF_tardy_value_label))
+    #UPDATE ALL LABELS
+    def update_label(self, var, label, *args):
+        label.configure(text=var.get())
 
-     def update_label2(self, var, var1, label, *args):
-         label.configure(text=f"{var.get()}:{var1.get()}")
+    def update_label2(self, var, var1, label, *args):
+        label.configure(text=f"{var.get()}:{var1.get()}")
 
-     #CONTROL FRAME MOVEMENT FUNCTIONS
-     def toggle_control_frame(self):
-         if self.CF_visible:
-             self.hide_sidebar()
-         else:
-             self.show_sidebar()
+    #CONTROL FRAME MOVEMENT FUNCTIONS
+    def toggle_control_frame(self):
+        if self.CF_visible:
+            self.hide_sidebar()
+        else:
+            self.show_sidebar()
 
-     def show_sidebar(self):
+    def show_sidebar(self):
         if self.CF_visible or getattr(self, 'animating', False):
             return
 
@@ -985,7 +973,7 @@ class setupClass(ctk.CTkFrame):
         self.weekday_assignment.configure(width=self.control_frame_width - 16, text='Weekday Assignment', compound='left')
 
 
-     def hide_sidebar(self):
+    def hide_sidebar(self):
         if not self.CF_visible or getattr(self, 'animating', False):
             return
 
@@ -1012,31 +1000,31 @@ class setupClass(ctk.CTkFrame):
         self.manage_schedule.configure(width=self.CF_hidden_visibility_width-16, text='', compound='top')
         self.weekday_assignment.configure(width=self.CF_hidden_visibility_width-16, text='', compound='top')
 
-     def tabSwap(self, new_tab):
-         if new_tab == 1:
-             self.schedule_list_frame.lift()
-         if new_tab == 2:
-             self.period_list_frame.lift()
-         if new_tab == 3:
-             self.schedule_options_frame.lift()
-         if new_tab == 4:
-             self.schedule_info_frame.lift()
-         if new_tab == 5:
-             self.period_info_frame.lift()
-         if new_tab == 6:
-             self.select_weekdays_frame.lift()
-         if new_tab == 7:
-             self.student_period_selection_frame.lift()
-         self.control_frame.lift()
-         self.exit_button.lift()
-         self.current_tab = new_tab
+    def tabSwap(self, new_tab):
+        if new_tab == 1:
+            self.schedule_list_frame.lift()
+        if new_tab == 2:
+            self.period_list_frame.lift()
+        if new_tab == 3:
+            self.schedule_options_frame.lift()
+        if new_tab == 4:
+            self.schedule_info_frame.lift()
+        if new_tab == 5:
+            self.period_info_frame.lift()
+        if new_tab == 6:
+            self.select_weekdays_frame.lift()
+        if new_tab == 7:
+            self.student_period_selection_frame.lift()
+        self.control_frame.lift()
+        self.exit_button.lift()
+        self.current_tab = new_tab
 
-     def populate_schedule_list(self):
-         for widget in self.SL_scrollable_frame.winfo_children():
-             widget.destroy()
-         schedules = getFromSchedules("select schedule_ID, name from schedules ORDER by name ASC")
-         if schedules:
-             for index, schedule_info in enumerate(schedules):
+    def populate_schedule_list(self):
+        for widget in self.SL_scrollable_frame.winfo_children():
+            widget.destroy()
+        schedules = getFromSchedules("select schedule_ID, name from schedules ORDER by name ASC")
+        if schedules:
+            for index, schedule_info in enumerate(schedules):
                 schedule_frame = ctk.CTkFrame(self.SL_scrollable_frame, height= 60,fg_color="#1f6aa5", bg_color='white', border_width=4, border_color='white')
                 schedule_frame.grid_propagate(0)
                 schedule_frame.grid(row=index, column=0, sticky='nsew', padx=5, pady=5)
@@ -1046,12 +1034,12 @@ class setupClass(ctk.CTkFrame):
 
                 ctk.CTkButton(schedule_frame, text=schedule_info[1], height=60,width=schedule_frame.winfo_width()*5/6,bg_color='white', border_width=4, border_color='white',font=('Space Grotesk', 20, 'bold'), command = lambda i0 = schedule_info[0], i1 = schedule_info[1]: self.display_schedule_options(i0, i1)).grid(row=0, column=1, sticky='nsew')
                 ctk.CTkButton(schedule_frame, image=self.deleteImage,text='',compound='left',fg_color='red',height=60,width=schedule_frame.winfo_width()*1/6,bg_color='white', border_width=4, border_color='white',command = lambda i0=schedule_info[0] : self.delete_schedule_check(i0)).grid(row=0, column=0, sticky='nsew')
-             self.SL_scrollable_frame._parent_canvas.yview_moveto(0)
+            self.SL_scrollable_frame._parent_canvas.yview_moveto(0)
 
-         else:
-             ctk.CTkLabel(self.SL_scrollable_frame, text="No Schedules To Display...", text_color='gray',font=("Space Grotesk", 25)).pack(pady=200, anchor='center')
+        else:
+            ctk.CTkLabel(self.SL_scrollable_frame, text="No Schedules To Display...", text_color='gray',font=("Space Grotesk", 25)).pack(pady=200, anchor='center')
 
-     def populate_period_list(self, schedule_ID, name):
+    def populate_period_list(self, schedule_ID, name):
         for widget in self.PL_scrollable_frame.winfo_children():
             widget.destroy()
         if name:
@@ -1071,196 +1059,196 @@ class setupClass(ctk.CTkFrame):
         self.PL_scrollable_frame._parent_canvas.yview_moveto(0)
 
 
-     def populate_period_info(self, schedule_ID, period_ID):
-         #HIDE BUTTONS
-         self.PI_LF_edit_students_button.pack_forget()
-         self.PI_LF_daytype_label.pack_forget()
-         self.PI_LF_daytype_segmented_button.pack_forget()
-         self.PI_LF_submit_button.pack_forget()
-         with db.cursor() as get_period_info_curs:
-             if period_ID:
-                 self.PI_LF_edit_students_button.pack(side='top', pady=10)
-             if callMultiple(get_period_info_curs,"select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0] == 1: #IF ITS BLOCK SCHEDULE
+    def populate_period_info(self, schedule_ID, period_ID):
+        #HIDE BUTTONS
+        self.PI_LF_edit_students_button.pack_forget()
+        self.PI_LF_daytype_label.pack_forget()
+        self.PI_LF_daytype_segmented_button.pack_forget()
+        self.PI_LF_submit_button.pack_forget()
+        with db.cursor() as get_period_info_curs:
+            if period_ID:
+                self.PI_LF_edit_students_button.pack(side='top', pady=10)
+            if callMultiple(get_period_info_curs,"select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0] == 1: #IF ITS BLOCK SCHEDULE
                 self.PI_LF_daytype_label.pack(side='top',pady=(10,5))
                 self.PI_LF_daytype_segmented_button.pack(side='top',pady=(10,20))
                 if period_ID: #IF THE PERIOD ALREADY EXISTS
                     #SET SEGMENTED BUTTON VALUE
                     self.PI_LF_daytype_segmented_button.set(callMultiple(get_period_info_curs,"select block_val from periods where period_ID = %s", (period_ID,), True)[0])
-             self.PI_LF_submit_button.configure(command = lambda: self.submit_period(schedule_ID, period_ID))
-             self.PI_LF_submit_button.pack(side='top',pady=(20,10))
+            self.PI_LF_submit_button.configure(command = lambda: self.submit_period(schedule_ID, period_ID))
+            self.PI_LF_submit_button.pack(side='top',pady=(20,10))
 
-             if period_ID: #IF THE PERIOD EXISTS
-                 #SET LABELS
-                 name = callMultiple(get_period_info_curs,"select name from periods where period_ID = %s", (period_ID,), True)[0]
-                 self.PTF_title_label.configure(text='Edit Period: ' + name)
-                 self.PI_LF_submit_button.configure(text='Submit Edits')
-                 #SET PERIOD NAME
-                 self.PI_LF_period_entry.delete(0, 'end')
-                 self.PI_LF_period_entry.insert(0, name)
-                 start_time, end_time, late_var = callMultiple(get_period_info_curs, "select start_time, end_time, late_var from periods where period_ID = %s", (period_ID,), True)
+            if period_ID: #IF THE PERIOD EXISTS
+                #SET LABELS
+                name = callMultiple(get_period_info_curs,"select name from periods where period_ID = %s", (period_ID,), True)[0]
+                self.PTF_title_label.configure(text='Edit Period: ' + name)
+                self.PI_LF_submit_button.configure(text='Submit Edits')
+                #SET PERIOD NAME
+                self.PI_LF_period_entry.delete(0, 'end')
+                self.PI_LF_period_entry.insert(0, name)
+                start_time, end_time, late_var = callMultiple(get_period_info_curs, "select start_time, end_time, late_var from periods where period_ID = %s", (period_ID,), True)
 
-                 #SET EDIT STUDENT BUTTON
-                 self.PI_LF_edit_students_button.configure(command=lambda: self.display_student_assignment_frame(period_ID, name))
+                #SET EDIT STUDENT BUTTON
+                self.PI_LF_edit_students_button.configure(command=lambda: self.display_student_assignment_frame(period_ID, name))
 
-                 #SET TIMING VALUES
-                 self.PI_RF_start_hour_var.set(f"{(start_time//60):02d}")
-                 self.PI_RF_start_minute_var.set(f"{(start_time%60):02d}")
-                 self.PI_RF_end_hour_var.set(f"{(end_time//60):02d}")
-                 self.PI_RF_end_minute_var.set(f"{(end_time%60):02d}")
-                 self.PI_RF_tardy_minute_var.set(f"{(late_var):02d}")
-             else:
-                 self.PI_LF_period_entry.delete(0, 'end')
-                 self.PI_LF_daytype_segmented_button.set("")
-                 self.PI_RF_start_hour_var.set("12")
-                 self.PI_RF_start_minute_var.set("00")
-                 self.PI_RF_end_hour_var.set("12")
-                 self.PI_RF_end_minute_var.set("00")
-                 self.PI_RF_tardy_minute_var.set('05')
-                 self.PTF_title_label.configure(text='Create New Period')
-                 self.PI_LF_submit_button.configure(text='+ Create Period +')
+                #SET TIMING VALUES
+                self.PI_RF_start_hour_var.set(f"{(start_time//60):02d}")
+                self.PI_RF_start_minute_var.set(f"{(start_time%60):02d}")
+                self.PI_RF_end_hour_var.set(f"{(end_time//60):02d}")
+                self.PI_RF_end_minute_var.set(f"{(end_time%60):02d}")
+                self.PI_RF_tardy_minute_var.set(f"{(late_var):02d}")
+            else:
+                self.PI_LF_period_entry.delete(0, 'end')
+                self.PI_LF_daytype_segmented_button.set("")
+                self.PI_RF_start_hour_var.set("12")
+                self.PI_RF_start_minute_var.set("00")
+                self.PI_RF_end_hour_var.set("12")
+                self.PI_RF_end_minute_var.set("00")
+                self.PI_RF_tardy_minute_var.set('05')
+                self.PTF_title_label.configure(text='Create New Period')
+                self.PI_LF_submit_button.configure(text='+ Create Period +')
 
-     def populate_weekday_frame(self, schedule_name):
-         schedule_ID = self.SW_schedule_dict.get(schedule_name)
-         weekday_info = {row[0]: (row[1], row[2]) for row in getFromSchedule_Days("select weekday, dynamic_daytype, daytype from schedule_days where schedule_ID = %s ORDER BY weekday ASC", (schedule_ID,))}
-         self.SW_schedule_type = getFromSchedules("select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
-         self.clear_weekday_frame()
-         edit = False
-         if weekday_info: #IF THIS SCHEDULE ALREADY HAS INFORMATION SAVED, POPULATE IT
+    def populate_weekday_frame(self, schedule_name):
+        schedule_ID = self.SW_schedule_dict.get(schedule_name)
+        weekday_info = {row[0]: (row[1], row[2]) for row in getFromSchedule_Days("select weekday, dynamic_daytype, daytype from schedule_days where schedule_ID = %s ORDER BY weekday ASC", (schedule_ID,))}
+        self.SW_schedule_type = getFromSchedules("select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
+        self.clear_weekday_frame()
+        edit = False
+        if weekday_info: #IF THIS SCHEDULE ALREADY HAS INFORMATION SAVED, POPULATE IT
             edit = True
             for key, values in self.weekday_dict.items():
-                 checkbox, combobox = values
-                 if weekday_info.get(key)[1]: #CHECK IF DAYTYPE EXISTS, CHECKBOX SHOULD BE CHECKED!
-                     checkbox.select()
-                     self.display_weekday_daytype(key, ctk.IntVar(value = 1))
-                     if self.SW_schedule_type:
-                         if weekday_info.get(key)[0]: #IS IT A DYNAMIC DAY
-                             combobox.set('Dynamic')
-                         else:
-                             combobox.set(weekday_info.get(key)[1])
-         self.SW_submit_button.configure(command=lambda: self.submit_weekdays(schedule_ID, edit)) #MAKE SURE SUBMIT BUTTON HAS SCHEDULE ID
+                checkbox, combobox = values
+                if weekday_info.get(key)[1]: #CHECK IF DAYTYPE EXISTS, CHECKBOX SHOULD BE CHECKED!
+                    checkbox.select()
+                    self.display_weekday_daytype(key, ctk.IntVar(value = 1))
+                    if self.SW_schedule_type:
+                        if weekday_info.get(key)[0]: #IS IT A DYNAMIC DAY
+                            combobox.set('Dynamic')
+                        else:
+                            combobox.set(weekday_info.get(key)[1])
+        self.SW_submit_button.configure(command=lambda: self.submit_weekdays(schedule_ID, edit)) #MAKE SURE SUBMIT BUTTON HAS SCHEDULE ID
 
-     def populate_SA_master_frame(self):
-         for widget in self.SA_master_scrollable_frame.winfo_children():
+    def populate_SA_master_frame(self):
+        for widget in self.SA_master_scrollable_frame.winfo_children():
             if not isinstance(widget, ctk.CTkButton):
                 widget.destroy()
-         self.SA_MSF_student_dict = {}
-         student_data = getFromStudent_Names("select * from student_names ORDER by first_name ASC")
-         for index, student in enumerate(student_data, start=1):
-             macID, first_name, last_name = student
-             name = f"{first_name} {last_name}"
+        self.SA_MSF_student_dict = {}
+        student_data = getFromStudent_Names("select * from student_names ORDER by first_name ASC")
+        for index, student in enumerate(student_data, start=1):
+            macID, first_name, last_name = student
+            name = f"{first_name} {last_name}"
 
-             student_frame = ctk.CTkFrame(self.SA_master_scrollable_frame, height = 60)
-             student_frame.grid(row=index, column=0, columnspan=2, sticky='new',pady=5,padx=7)
+            student_frame = ctk.CTkFrame(self.SA_master_scrollable_frame, height = 60)
+            student_frame.grid(row=index, column=0, columnspan=2, sticky='new',pady=5,padx=7)
 
-             ctk.CTkLabel(student_frame, text=name, font=('Space Grotesk', 16)).pack(side='left', pady=5,padx=10)
+            ctk.CTkLabel(student_frame, text=name, font=('Space Grotesk', 16)).pack(side='left', pady=5,padx=10)
 
-             student_checkbox = ctk.CTkCheckBox(student_frame, checkbox_height = 50, checkbox_width = 50, text='')
-             student_checkbox.pack(side='right',pady=5,padx=5)
+            student_checkbox = ctk.CTkCheckBox(student_frame, checkbox_height = 50, checkbox_width = 50, text='')
+            student_checkbox.pack(side='right',pady=5,padx=5)
 
-             self.SA_MSF_student_dict[macID] = student_checkbox
-         self.SA_master_scrollable_frame._parent_canvas.yview_moveto(0)
+            self.SA_MSF_student_dict[macID] = student_checkbox
+        self.SA_master_scrollable_frame._parent_canvas.yview_moveto(0)
 
-     def populate_SA_period_frame(self, period_ID):
-         for widget in self.SA_period_scrollable_frame.winfo_children():
-             if not isinstance(widget, ctk.CTkButton):
+    def populate_SA_period_frame(self, period_ID):
+        for widget in self.SA_period_scrollable_frame.winfo_children():
+            if not isinstance(widget, ctk.CTkButton):
                 widget.destroy()
-         self.SA_PSF_student_dict = {}
-         student_data = getFromStudent_Periods("select sp.macID, sn.first_name, sn.last_name from student_periods sp join student_names sn on sp.macID = sn.macID where sp.period_ID = %s ORDER by sn.first_name ASC", (period_ID,))
-         for index, student in enumerate(student_data, start = 1):
-             macID, first_name, last_name = student
-             name = f"{first_name} {last_name}"
+        self.SA_PSF_student_dict = {}
+        student_data = getFromStudent_Periods("select sp.macID, sn.first_name, sn.last_name from student_periods sp join student_names sn on sp.macID = sn.macID where sp.period_ID = %s ORDER by sn.first_name ASC", (period_ID,))
+        for index, student in enumerate(student_data, start = 1):
+            macID, first_name, last_name = student
+            name = f"{first_name} {last_name}"
 
-             student_frame = ctk.CTkFrame(self.SA_period_scrollable_frame, height = 60)
-             student_frame.grid(row=index, column=0, columnspan = 2, sticky='new',pady=5,padx=7)
+            student_frame = ctk.CTkFrame(self.SA_period_scrollable_frame, height = 60)
+            student_frame.grid(row=index, column=0, columnspan = 2, sticky='new',pady=5,padx=7)
 
-             ctk.CTkLabel(student_frame, text=name, font=('Space Grotesk', 16)).pack(side='left', pady=5,padx=10)
+            ctk.CTkLabel(student_frame, text=name, font=('Space Grotesk', 16)).pack(side='left', pady=5,padx=10)
 
-             student_checkbox = ctk.CTkCheckBox(student_frame, checkbox_height = 50, checkbox_width = 50,text='')
-             student_checkbox.pack(side='right',pady=5,padx=5)
+            student_checkbox = ctk.CTkCheckBox(student_frame, checkbox_height = 50, checkbox_width = 50,text='')
+            student_checkbox.pack(side='right',pady=5,padx=5)
 
-             self.SA_PSF_student_dict[macID] = student_checkbox
-         self.SA_period_scrollable_frame._parent_canvas.yview_moveto(0)
+            self.SA_PSF_student_dict[macID] = student_checkbox
+        self.SA_period_scrollable_frame._parent_canvas.yview_moveto(0)
 
-     def update_SA_checkboxes(self, dictionary, selecting):
-         if selecting:
+    def update_SA_checkboxes(self, dictionary, selecting):
+        if selecting:
             for checkbox in dictionary.values():
                 checkbox.select()
-         else:
-             for checkbox in dictionary.values():
-                 checkbox.deselect()
+        else:
+            for checkbox in dictionary.values():
+                checkbox.deselect()
 
-     def delete_schedule_check(self, schedule_ID):
-         warning_confirmation.warning_confirmation_dict['remove schedule check'][3] = lambda i0 = schedule_ID: self.delete_schedule(i0)
-         warning_confirmation.warning_confirmation_dict['remove schedule check'][1] = f"*This will entirely remove {getFromSchedules('select name from schedules where schedule_ID = %s', (schedule_ID,), True)[0]} and every period in it.*"
-         warning_confirmation.config('remove schedule check')
+    def delete_schedule_check(self, schedule_ID):
+        warning_confirmation.warning_confirmation_dict['remove schedule check'][3] = lambda i0 = schedule_ID: self.delete_schedule(i0)
+        warning_confirmation.warning_confirmation_dict['remove schedule check'][1] = f"*This will entirely remove {getFromSchedules('select name from schedules where schedule_ID = %s', (schedule_ID,), True)[0]} and every period in it.*"
+        warning_confirmation.config('remove schedule check')
 
-     def delete_period_check(self, period_ID, schedule_ID):
-         warning_confirmation.warning_confirmation_dict['remove period check'][3] = lambda i0 = period_ID, i1 = schedule_ID: self.delete_period(i0, i1)
-         warning_confirmation.warning_confirmation_dict['remove period check'][1] = f"*This will entirely remove {getFromPeriods('select name from periods where period_ID = %s', (period_ID,), True)[0]}.*"
-         warning_confirmation.config('remove period check')
+    def delete_period_check(self, period_ID, schedule_ID):
+        warning_confirmation.warning_confirmation_dict['remove period check'][3] = lambda i0 = period_ID, i1 = schedule_ID: self.delete_period(i0, i1)
+        warning_confirmation.warning_confirmation_dict['remove period check'][1] = f"*This will entirely remove {getFromPeriods('select name from periods where period_ID = %s', (period_ID,), True)[0]}.*"
+        warning_confirmation.config('remove period check')
 
-     def delete_schedule(self, schedule_ID):
-         getFromSystem_Control("update system_control set active_schedule_ID = %s", (None,), False, False)
-         #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
-         getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
-         print("deleting schedule" + str(schedule_ID))
-         hide_popup(warning_confirmation)
-
-
-
-     def delete_period(self, period_ID, schedule_ID):
-         getFromPeriods("delete from periods where period_ID = %s", (period_ID,), False, False)
-         #refresh schedule period list
-         self.populate_period_list(schedule_ID, None)
-         #clear history filters and reset results
-         historyFrame.top_name_menu.set("")
-         historyFrame.top_name_check.deselect()
-         historyFrame.period_menu.set("")
-         historyFrame.period_check.deselect()
-         historyFrame.fetch_students()
-         #clear settings period selection and reset results
-         teacherFrame.update_period_menu()
-         teacherFrame.period_selected(teacherFrame.period_menu.get())
-         #close check popup
-         hide_popup(warning_confirmation)
-
-     def display_SA_success(self, decision, inserted, overlap, name):
-         if inserted:
-             placeholder = ', '.join(['%s'] * len(inserted))
-             query = f"SELECT CONCAT(first_name, ' ', last_name) AS full_name from student_names where macID in ({placeholder})"
-             names = getFromStudent_Names(query, tuple(inserted))
-             final_text = f"{decision} "
-             for student_name in names:
-                 final_text += f"{str(student_name[0])}, "
-             final_text = final_text[:-2]
-             final_text += " from: " + name
-             self.SA_SN_label.configure(text=final_text)
-         else:
-             self.SA_SN_label.configure(text='')
-         if overlap:
-             placeholder2 = ', '.join(['%s'] * len(overlap))
-             query2 = f"SELECT CONCAT(first_name, ' ', last_name) AS full_name from student_names where macID in ({placeholder2})"
-             names2 = getFromStudent_Names(query2, tuple(overlap))
-             final_text2 = f"Already In {name}: "
-             for student_name2 in names2:
-                 final_text2 += f"{str(student_name2[0])}, "
-             final_text2 = final_text2[:-2]
-             self.SA_SN_overlap_label.configure(text=final_text2)
-         else:
-             self.SA_SN_overlap_label.configure(text='')
-         self.SA_success_notice.place(relx=.5, rely=.5, anchor='center')
+    def delete_schedule(self, schedule_ID):
+        getFromSystem_Control("update system_control set active_schedule_ID = %s", (None,), False, False)
+        #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
+        getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
+        print("deleting schedule" + str(schedule_ID))
+        hide_popup(warning_confirmation)
 
 
-     def display_student_assignment_frame(self, period_ID, name):
-         self.SA_title_label.configure(text=f"Edit Period: {name}")
-         self.SA_period_scrollable_frame.configure(label_text=name)
-         self.SA_assign_button.configure(command=lambda: self.SA_assign_students(period_ID, name))
-         self.SA_remove_button.configure(command=lambda: self.SA_remove_students(period_ID, name))
-         self.populate_SA_master_frame()
-         self.populate_SA_period_frame(period_ID)
-         self.tabSwap(7)
 
-     def display_weekday_daytype(self, index, value):
+    def delete_period(self, period_ID, schedule_ID):
+        getFromPeriods("delete from periods where period_ID = %s", (period_ID,), False, False)
+        #refresh schedule period list
+        self.populate_period_list(schedule_ID, None)
+        #clear history filters and reset results
+        historyFrame.top_name_menu.set("")
+        historyFrame.top_name_check.deselect()
+        historyFrame.period_menu.set("")
+        historyFrame.period_check.deselect()
+        historyFrame.fetch_students()
+        #clear settings period selection and reset results
+        teacherFrame.update_period_menu()
+        teacherFrame.period_selected(teacherFrame.period_menu.get())
+        #close check popup
+        hide_popup(warning_confirmation)
+
+    def display_SA_success(self, decision, inserted, overlap, name):
+        if inserted:
+            placeholder = ', '.join(['%s'] * len(inserted))
+            query = f"SELECT CONCAT(first_name, ' ', last_name) AS full_name from student_names where macID in ({placeholder})"
+            names = getFromStudent_Names(query, tuple(inserted))
+            final_text = f"{decision} "
+            for student_name in names:
+                final_text += f"{str(student_name[0])}, "
+            final_text = final_text[:-2]
+            final_text += " from: " + name
+            self.SA_SN_label.configure(text=final_text)
+        else:
+            self.SA_SN_label.configure(text='')
+        if overlap:
+            placeholder2 = ', '.join(['%s'] * len(overlap))
+            query2 = f"SELECT CONCAT(first_name, ' ', last_name) AS full_name from student_names where macID in ({placeholder2})"
+            names2 = getFromStudent_Names(query2, tuple(overlap))
+            final_text2 = f"Already In {name}: "
+            for student_name2 in names2:
+                final_text2 += f"{str(student_name2[0])}, "
+            final_text2 = final_text2[:-2]
+            self.SA_SN_overlap_label.configure(text=final_text2)
+        else:
+            self.SA_SN_overlap_label.configure(text='')
+        self.SA_success_notice.place(relx=.5, rely=.5, anchor='center')
+
+
+    def display_student_assignment_frame(self, period_ID, name):
+        self.SA_title_label.configure(text=f"Edit Period: {name}")
+        self.SA_period_scrollable_frame.configure(label_text=name)
+        self.SA_assign_button.configure(command=lambda: self.SA_assign_students(period_ID, name))
+        self.SA_remove_button.configure(command=lambda: self.SA_remove_students(period_ID, name))
+        self.populate_SA_master_frame()
+        self.populate_SA_period_frame(period_ID)
+        self.tabSwap(7)
+
+    def display_weekday_daytype(self, index, value):
         #displays A/B/Dynamic option after clicking a checkbox
         type = self.get_SW_schedule_type()
         combobox = self.weekday_dict.get(index)[1]
@@ -1271,173 +1259,173 @@ class setupClass(ctk.CTkFrame):
                 combobox.grid_forget()
                 combobox.set("")
 
-     def display_period_list(self, schedule_ID, name = None):
+    def display_period_list(self, schedule_ID, name = None):
         self.populate_period_list(schedule_ID, name)
         self.PL_back_button.configure(command = lambda: self.display_schedule_options(schedule_ID, name))
         self.tabSwap(2)
 
-     def display_schedule_list(self):
+    def display_schedule_list(self):
         self.populate_schedule_list()
         self.tabSwap(1)
 
-     def display_period_info(self, schedule_ID, period_ID = None):
+    def display_period_info(self, schedule_ID, period_ID = None):
         #turn on edit mode for period_ID
         self.populate_period_info(schedule_ID, period_ID)
         self.tabSwap(5)
 
-     def display_weekday_frame(self):
-         self.SW_schedule_dict = {f"{index}: {name}": schedule_ID for index, (name, schedule_ID) in enumerate(getFromSchedules("select name, schedule_ID from schedules"), start=1)}
-         self.SW_schedule_combobox.set("")
-         self.SW_schedule_combobox.configure(values = list(self.SW_schedule_dict.keys()))
-         self.tabSwap(6)
+    def display_weekday_frame(self):
+        self.SW_schedule_dict = {f"{index}: {name}": schedule_ID for index, (name, schedule_ID) in enumerate(getFromSchedules("select name, schedule_ID from schedules"), start=1)}
+        self.SW_schedule_combobox.set("")
+        self.SW_schedule_combobox.configure(values = list(self.SW_schedule_dict.keys()))
+        self.tabSwap(6)
 
-     def display_schedule_options(self, schedule_ID, name):
-         self.SOTF_title_label.configure(text=name)
-         self.SO_LC_periods_button.configure(command= lambda: self.display_period_list(schedule_ID, name))
-         self.SO_LC_edit_schedule_button.configure(command = lambda: self.display_schedule_info(schedule_ID, name))
-         self.tabSwap(3)
+    def display_schedule_options(self, schedule_ID, name):
+        self.SOTF_title_label.configure(text=name)
+        self.SO_LC_periods_button.configure(command= lambda: self.display_period_list(schedule_ID, name))
+        self.SO_LC_edit_schedule_button.configure(command = lambda: self.display_schedule_info(schedule_ID, name))
+        self.tabSwap(3)
 
-     def display_schedule_info(self, schedule_ID = None, name = None):
-         self.SI_name_entry.delete(0, 'end')
-         self.SI_schedule_combobox.set("")
-         self.SI_schedule_frame.pack_forget()
-         self.SI_absence_frame.pack_forget()
-         if name: #IF WERE EDITING SCHEDULE
-             self.SI_back_button.configure(command = lambda: self.tabSwap(3))
-             self.STF_title_label.configure(text=f"Edit Schedule: {name}")
-             self.SI_name_entry.insert(0, name)
-             #ADD ABSENCE FRAME
-             self.SI_AF_minute_var.set(f"{(getFromSchedules('select absent_var from schedules where schedule_ID = %s', (schedule_ID,), True)[0]):02d}")
-             self.SI_absence_frame.pack(anchor='center')
-             self.SI_submit_button.configure(text='Submit Edits')
-         else: #IF WE ARE CREATING NEW SCHEDULE
-             self.SI_back_button.configure(command = lambda: self.tabSwap(1))
-             self.STF_title_label.configure(text='New Schedule:')
-             self.SI_schedule_frame.pack(side='left', anchor='center')
-             self.SI_absence_frame.pack(side='left', anchor='center')
-             self.SI_submit_button.configure(text='+ Create Schedule +')
-         self.SI_submit_button.configure(command = lambda: self.submit_schedule(schedule_ID))
+    def display_schedule_info(self, schedule_ID = None, name = None):
+        self.SI_name_entry.delete(0, 'end')
+        self.SI_schedule_combobox.set("")
+        self.SI_schedule_frame.pack_forget()
+        self.SI_absence_frame.pack_forget()
+        if name: #IF WERE EDITING SCHEDULE
+            self.SI_back_button.configure(command = lambda: self.tabSwap(3))
+            self.STF_title_label.configure(text=f"Edit Schedule: {name}")
+            self.SI_name_entry.insert(0, name)
+            #ADD ABSENCE FRAME
+            self.SI_AF_minute_var.set(f"{(getFromSchedules('select absent_var from schedules where schedule_ID = %s', (schedule_ID,), True)[0]):02d}")
+            self.SI_absence_frame.pack(anchor='center')
+            self.SI_submit_button.configure(text='Submit Edits')
+        else: #IF WE ARE CREATING NEW SCHEDULE
+            self.SI_back_button.configure(command = lambda: self.tabSwap(1))
+            self.STF_title_label.configure(text='New Schedule:')
+            self.SI_schedule_frame.pack(side='left', anchor='center')
+            self.SI_absence_frame.pack(side='left', anchor='center')
+            self.SI_submit_button.configure(text='+ Create Schedule +')
+        self.SI_submit_button.configure(command = lambda: self.submit_schedule(schedule_ID))
 
-         self.tabSwap(4)
+        self.tabSwap(4)
 
-     def change_hour(self, var, delta):
-         current_hour = int(var.get())
-         new_hour = (current_hour + delta) % 25
-         var.set(f"{new_hour:02d}")
+    def change_hour(self, var, delta):
+        current_hour = int(var.get())
+        new_hour = (current_hour + delta) % 25
+        var.set(f"{new_hour:02d}")
 
-     def change_minute(self, var, delta):
-         current_minute = int(var.get())
-         new_minute = (current_minute + delta) % 60
-         var.set(f"{new_minute:02d}")
+    def change_minute(self, var, delta):
+        current_minute = int(var.get())
+        new_minute = (current_minute + delta) % 60
+        var.set(f"{new_minute:02d}")
 
-     def clear_weekday_frame(self):
-         for value in self.weekday_dict.values():
-             checkbox, combobox = value
-             checkbox.deselect()
-             combobox.set("")
-             combobox.grid_forget()
+    def clear_weekday_frame(self):
+        for value in self.weekday_dict.values():
+            checkbox, combobox = value
+            checkbox.deselect()
+            combobox.set("")
+            combobox.grid_forget()
 
-     def set_current_entry(self, entry):
-         display_popup(keyboardFrame, .65)
-         keyboardFrame.set_target(entry)
+    def set_current_entry(self, entry):
+        display_popup(keyboardFrame, .65)
+        keyboardFrame.set_target(entry)
 
-     def get_SW_schedule_type(self):
-         return self.SW_schedule_type
+    def get_SW_schedule_type(self):
+        return self.SW_schedule_type
 
-     def SA_assign_students(self, period_ID, name):
-         overlapped_students = []
-         inserted_students = []
-         students_to_insert = []
+    def SA_assign_students(self, period_ID, name):
+        overlapped_students = []
+        inserted_students = []
+        students_to_insert = []
 
-         for key, value in self.SA_MSF_student_dict.items():
-             if value.get():  # If checkbox is selected, check if already in the period
-                 # Check if the student is already in the period
-                 with db.cursor() as check_student_curs:
-                     # If the student is not already assigned to the period, insert them
-                     if callMultiple(check_student_curs, "SELECT COUNT(*) FROM student_periods WHERE macID = %s AND period_ID = %s", (key, period_ID), True)[0] == 0:
-                         students_to_insert.append((key, period_ID))
-                         inserted_students.append(key)
-                     else:
-                         overlapped_students.append(key)
-                 value.deselect()  # Deselect the checkbox after checking
+        for key, value in self.SA_MSF_student_dict.items():
+            if value.get():  # If checkbox is selected, check if already in the period
+                # Check if the student is already in the period
+                with db.cursor() as check_student_curs:
+                    # If the student is not already assigned to the period, insert them
+                    if callMultiple(check_student_curs, "SELECT COUNT(*) FROM student_periods WHERE macID = %s AND period_ID = %s", (key, period_ID), True)[0] == 0:
+                        students_to_insert.append((key, period_ID))
+                        inserted_students.append(key)
+                    else:
+                        overlapped_students.append(key)
+                value.deselect()  # Deselect the checkbox after checking
 
-         # Execute the bulk insert if there are students to insert
-         if students_to_insert:
-             with db.cursor() as add_student_curs:
-                  add_student_curs.executemany("INSERT INTO student_periods (macID, period_ID) VALUES (%s, %s)", tuple(students_to_insert))
+        # Execute the bulk insert if there are students to insert
+        if students_to_insert:
+            with db.cursor() as add_student_curs:
+                add_student_curs.executemany("INSERT INTO student_periods (macID, period_ID) VALUES (%s, %s)", tuple(students_to_insert))
 
-         # Proceed with other operations
-         self.populate_SA_period_frame(period_ID)
-         self.display_SA_success('Added', inserted_students, overlapped_students,name)
+        # Proceed with other operations
+        self.populate_SA_period_frame(period_ID)
+        self.display_SA_success('Added', inserted_students, overlapped_students,name)
 
-     def SA_remove_students(self, period_ID, name):
-         log_list = []
-         with db.cursor() as remove_student_curs:
-             for key, value in self.SA_PSF_student_dict.items():
-                 if value.get():
+    def SA_remove_students(self, period_ID, name):
+        log_list = []
+        with db.cursor() as remove_student_curs:
+            for key, value in self.SA_PSF_student_dict.items():
+                if value.get():
                     callMultiple(remove_student_curs, "delete from student_periods where macID = %s and period_ID = %s", (key, period_ID), False, False)
                     log_list.append(key)
-         self.populate_SA_period_frame(period_ID)
-         self.display_SA_success('Removed',log_list, None, name)
+        self.populate_SA_period_frame(period_ID)
+        self.display_SA_success('Removed',log_list, None, name)
 
-     def submit_schedule(self, schedule_ID):
-         #INPUT SCHEDULE INFO FROM SCHEDULE FRAME
-         name = self.SI_name_entry.get() #GET SCHEDULE NAME
-
-
-         if not schedule_ID:
-             type = self.schedule_dict.get(self.SI_schedule_combobox.get()) #GET SCHEDULE TYPE
-         else:
-             type = 'bad'
-
-         absent_var = int(self.SI_AF_value_label.cget('text'))
+    def submit_schedule(self, schedule_ID):
+        #INPUT SCHEDULE INFO FROM SCHEDULE FRAME
+        name = self.SI_name_entry.get() #GET SCHEDULE NAME
 
 
-         if name and absent_var and (schedule_ID or type != 'bad'): #IF SCHEDULE IS ALREADY CREATED, DON'T WORRY ABOUT SCHEDULE TYPE
-             #HIDE SCHEDULE AND ABSENT BUTTONS AND CLEAR EVERYTHING
-             self.SI_schedule_frame.pack_forget()
-             self.SI_absence_frame.pack_forget()
-             self.SI_name_entry.delete(0, 'end') #CLEAR ENTRY
-             self.SI_schedule_combobox.set("")
-             self.SI_AF_minute_var.set('30')
-             if schedule_ID:
-                 getFromSchedules("update schedules set name = %s, absent_var = %s where schedule_ID = %s", (name, absent_var, schedule_ID), False, False)
-                 self.display_schedule_list()
-             else:
-                 getFromSchedules("insert into schedules (name, type, absent_var) values (%s, %s, %s)", (name, type, absent_var), False, False)
-                 self.display_period_list(getFromSchedules("SELECT LAST_INSERT_ID()", None, True)[0], name)
+        if not schedule_ID:
+            type = self.schedule_dict.get(self.SI_schedule_combobox.get()) #GET SCHEDULE TYPE
+        else:
+            type = 'bad'
 
-         else:
-             #DISPLAY NEED MORE INPUTS
-             warning_confirmation.config('schedule input')
+        absent_var = int(self.SI_AF_value_label.cget('text'))
 
 
-     def submit_period(self, schedule_ID, period_ID):
-         block = self.PI_LF_daytype_segmented_button.winfo_ismapped() #IS BLOCK SCHEDULE DISPLAYED
+        if name and absent_var and (schedule_ID or type != 'bad'): #IF SCHEDULE IS ALREADY CREATED, DON'T WORRY ABOUT SCHEDULE TYPE
+            #HIDE SCHEDULE AND ABSENT BUTTONS AND CLEAR EVERYTHING
+            self.SI_schedule_frame.pack_forget()
+            self.SI_absence_frame.pack_forget()
+            self.SI_name_entry.delete(0, 'end') #CLEAR ENTRY
+            self.SI_schedule_combobox.set("")
+            self.SI_AF_minute_var.set('30')
+            if schedule_ID:
+                getFromSchedules("update schedules set name = %s, absent_var = %s where schedule_ID = %s", (name, absent_var, schedule_ID), False, False)
+                self.display_schedule_list()
+            else:
+                getFromSchedules("insert into schedules (name, type, absent_var) values (%s, %s, %s)", (name, type, absent_var), False, False)
+                self.display_period_list(getFromSchedules("SELECT LAST_INSERT_ID()", None, True)[0], name)
 
-         #INPUT PERIOD INFO FROM PERIOD FRAME
-         name = self.PI_LF_period_entry.get() #GET NAME ENTRY VALUE
-         self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
+        else:
+            #DISPLAY NEED MORE INPUTS
+            warning_confirmation.config('schedule input')
 
-         if block:
+
+    def submit_period(self, schedule_ID, period_ID):
+        block = self.PI_LF_daytype_segmented_button.winfo_ismapped() #IS BLOCK SCHEDULE DISPLAYED
+
+        #INPUT PERIOD INFO FROM PERIOD FRAME
+        name = self.PI_LF_period_entry.get() #GET NAME ENTRY VALUE
+        self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
+
+        if block:
             daytype = self.PI_LF_daytype_segmented_button.get() #GET DAYTYPE ENTRY
             self.PI_LF_daytype_segmented_button.set("")
-         else:
-             daytype = None
+        else:
+            daytype = None
 
-         start_time = time_to_minutes(self.PI_RF_start_value_label.cget('text'))
-         self.PI_RF_start_hour_var.set("12")
-         self.PI_RF_start_minute_var.set("00")
+        start_time = time_to_minutes(self.PI_RF_start_value_label.cget('text'))
+        self.PI_RF_start_hour_var.set("12")
+        self.PI_RF_start_minute_var.set("00")
 
-         end_time = time_to_minutes(self.PI_RF_end_value_label.cget('text'))
-         self.PI_RF_end_hour_var.set("12")
-         self.PI_RF_end_minute_var.set("00")
+        end_time = time_to_minutes(self.PI_RF_end_value_label.cget('text'))
+        self.PI_RF_end_hour_var.set("12")
+        self.PI_RF_end_minute_var.set("00")
 
-         late_var = int(self.PI_RF_tardy_value_label.cget('text'))
-         self.PI_RF_tardy_minute_var.set('05')
+        late_var = int(self.PI_RF_tardy_value_label.cget('text'))
+        self.PI_RF_tardy_minute_var.set('05')
 
-         #CHECK IF EVERYTHING HAS INPUT AND THEN SUBMIT DATA
-         if name and start_time and end_time and late_var and (not block or daytype):
+        #CHECK IF EVERYTHING HAS INPUT AND THEN SUBMIT DATA
+        if name and start_time and end_time and late_var and (not block or daytype):
             if not daytype: #IF NO VALUE IS RETURNED (TRADITIONAL SCHEDULE)
                 daytype = '-'
             if period_ID: #EDIT EXISTING PERIOD
@@ -1445,53 +1433,53 @@ class setupClass(ctk.CTkFrame):
             else: #ADD NEW PERIOD
                 getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
             self.display_period_list(schedule_ID)
-         else:
-             #DISPLAY NEED MORE INPUTS
-             warning_confirmation.config('period input')
+        else:
+            #DISPLAY NEED MORE INPUTS
+            warning_confirmation.config('period input')
 
-     def submit_weekdays(self, schedule_ID, edit):
-         #TAKE INFO AND SUBMIT IT TO DATABASE, CLEAR VALUES AND RESET COMBOBOX SELECTION
-         submit_list = []
-         need_more_data = False
-         for key, values in self.weekday_dict.items():
-             checkbox, combobox = values
-             if checkbox.get(): #IF CHECKBOX IS CHECKED
-                 dynamic_daytype = 0
-                 if combobox.winfo_ismapped(): #IF COMBOBOX IS DISPLAYED
-                     daytype = combobox.get()
-                     if daytype == "": #HAVE THEY NOT SELECTED ON OPTION FOR DYNAMIC DAYTYPE
-                         need_more_data = True
-                     elif daytype == 'Dynamic':
-                         daytype = '/'
-                         dynamic_daytype = 1
-                 else:
-                     daytype = "-"
-                 if edit:
+    def submit_weekdays(self, schedule_ID, edit):
+        #TAKE INFO AND SUBMIT IT TO DATABASE, CLEAR VALUES AND RESET COMBOBOX SELECTION
+        submit_list = []
+        need_more_data = False
+        for key, values in self.weekday_dict.items():
+            checkbox, combobox = values
+            if checkbox.get(): #IF CHECKBOX IS CHECKED
+                dynamic_daytype = 0
+                if combobox.winfo_ismapped(): #IF COMBOBOX IS DISPLAYED
+                    daytype = combobox.get()
+                    if daytype == "": #HAVE THEY NOT SELECTED ON OPTION FOR DYNAMIC DAYTYPE
+                        need_more_data = True
+                    elif daytype == 'Dynamic':
+                        daytype = '/'
+                        dynamic_daytype = 1
+                else:
+                    daytype = "-"
+                if edit:
                     submit_list.append((schedule_ID, key, dynamic_daytype, daytype, schedule_ID, key))
-                 else:
+                else:
                     submit_list.append((schedule_ID, key, dynamic_daytype, daytype))
-             else: #CHECKBOX NOT CHECKED
-                 if edit:
+            else: #CHECKBOX NOT CHECKED
+                if edit:
                     submit_list.append((schedule_ID, key, 0, None, schedule_ID, key))
-                 else:
+                else:
                     submit_list.append((schedule_ID, key, 0, None))
-         if need_more_data: #PROMPT FOR MORE VALUES
-             warning_confirmation.config('weekday input')
-         else: #SUBMIT DATA
-             with db.cursor() as weekday_curs:
-                 if edit: #WE ARE UPDATING
+        if need_more_data: #PROMPT FOR MORE VALUES
+            warning_confirmation.config('weekday input')
+        else: #SUBMIT DATA
+            with db.cursor() as weekday_curs:
+                if edit: #WE ARE UPDATING
                     weekday_curs.executemany("update schedule_days set schedule_ID = %s, weekday = %s, dynamic_daytype = %s, daytype = %s where schedule_ID = %s and weekday = %s", (tuple(submit_list)))
-                 else: #WE ARE INSERTING
+                else: #WE ARE INSERTING
                     weekday_curs.executemany("insert into schedule_days (schedule_ID, weekday, dynamic_daytype, daytype) values (%s, %s, %s, %s)", (tuple(submit_list)))
-             self.clear_weekday_frame()
-             self.SW_submit_button.configure(command=lambda: None)
-             self.SW_schedule_combobox.set("")
-             newDay()
+            self.clear_weekday_frame()
+            self.SW_submit_button.configure(command=lambda: None)
+            self.SW_schedule_combobox.set("")
+            newDay()
 
-     def exit_schedule_setup(self):
-         self.tabSwap(1) #BACK TO SCHEDULE LIST
-         self.place_forget()
-         tabSwap(4) #BACK TO SETTINGS
+    def exit_schedule_setup(self):
+        self.tabSwap(1) #BACK TO SCHEDULE LIST
+        self.place_forget()
+        tabSwap(4) #BACK TO SETTINGS
 
 
 
@@ -1922,110 +1910,110 @@ class settingsClass(ctk.CTkFrame):
 #AWAITING FRAME ADDON
 #STUDENT AWAITING IMAGE SPIN
 class LoadingAnimation(ctk.CTkFrame):
-     def __init__(self, parent, arc_diameter=500, rotation_speed=20):
-         super().__init__(parent)
-         self.configure(fg_color='#333333')  # Dark background
+    def __init__(self, parent, arc_diameter=500, rotation_speed=20):
+        super().__init__(parent)
+        self.configure(fg_color='#333333')  # Dark background
 
-         # Fixed canvas size
-         self.canvas_size = 300
-         self.canvas = tk.Canvas(self, width=self.canvas_size, height=self.canvas_size, bg="#333333", highlightthickness=0)
-         self.canvas.pack(expand=True, padx=5, pady=5)
+        # Fixed canvas size
+        self.canvas_size = 300
+        self.canvas = tk.Canvas(self, width=self.canvas_size, height=self.canvas_size, bg="#333333", highlightthickness=0)
+        self.canvas.pack(expand=True, padx=5, pady=5)
 
-         # Initialize galaxy parameters
-         self.arc_radius = arc_diameter / 2
-         self.rotation_speed = rotation_speed  # Delay in ms for rotation
-         self.angle = 0  # Initial angle
-         self.is_spinning = False
+        # Initialize galaxy parameters
+        self.arc_radius = arc_diameter / 2
+        self.rotation_speed = rotation_speed  # Delay in ms for rotation
+        self.angle = 0  # Initial angle
+        self.is_spinning = False
 
-         # Draw the core of the galaxy with a lighter blue
-         core_size = arc_diameter * 0.1  # Core size relative to the diameter
-         self.core_id = self.canvas.create_oval(
-             (self.canvas_size / 2) - (core_size / 2), (self.canvas_size / 2) - (core_size / 2),
-             (self.canvas_size / 2) + (core_size / 2), (self.canvas_size / 2) + (core_size / 2),
-             fill="#3a9bdc", outline="#3a9bdc"  # Adjusted core color to a lighter blue
-         )
+        # Draw the core of the galaxy with a lighter blue
+        core_size = arc_diameter * 0.1  # Core size relative to the diameter
+        self.core_id = self.canvas.create_oval(
+            (self.canvas_size / 2) - (core_size / 2), (self.canvas_size / 2) - (core_size / 2),
+            (self.canvas_size / 2) + (core_size / 2), (self.canvas_size / 2) + (core_size / 2),
+            fill="#3a9bdc", outline="#3a9bdc"  # Adjusted core color to a lighter blue
+        )
 
-         # Create spiral arms
-         self.arms = []
-         self.num_arms = 8
-         arm_length = arc_diameter * 0.25  # Arm length relative to the diameter
+        # Create spiral arms
+        self.arms = []
+        self.num_arms = 8
+        arm_length = arc_diameter * 0.25  # Arm length relative to the diameter
 
-         for i in range(self.num_arms):
-             angle_rad = math.radians(i * (360 / self.num_arms))  # Spacing arms evenly
-             start_x = (self.canvas_size / 2) + (core_size / 2) * math.cos(angle_rad)  # Position adjusted
-             start_y = (self.canvas_size / 2) - (core_size / 2) * math.sin(angle_rad)  # Position adjusted
+        for i in range(self.num_arms):
+            angle_rad = math.radians(i * (360 / self.num_arms))  # Spacing arms evenly
+            start_x = (self.canvas_size / 2) + (core_size / 2) * math.cos(angle_rad)  # Position adjusted
+            start_y = (self.canvas_size / 2) - (core_size / 2) * math.sin(angle_rad)  # Position adjusted
 
-             arm = self.canvas.create_arc(
-                 start_x - arm_length / 2, start_y - arm_length / 2,
-                 start_x + arm_length / 2, start_y + arm_length / 2,
-                 start=self.angle, extent=150,  # Length of the arm
-                 style="arc", outline="#00BFFF", width=4  # Initial color
-             )
-             self.arms.append(arm)
+            arm = self.canvas.create_arc(
+                start_x - arm_length / 2, start_y - arm_length / 2,
+                start_x + arm_length / 2, start_y + arm_length / 2,
+                start=self.angle, extent=150,  # Length of the arm
+                style="arc", outline="#00BFFF", width=4  # Initial color
+            )
+            self.arms.append(arm)
 
-     def interpolate_color(self, color1, color2, factor):
-         """Interpolate between two colors based on the factor (0.0 to 1.0)."""
-         r1, g1, b1 = self.hex_to_rgb(color1)
-         r2, g2, b2 = self.hex_to_rgb(color2)
+    def interpolate_color(self, color1, color2, factor):
+        """Interpolate between two colors based on the factor (0.0 to 1.0)."""
+        r1, g1, b1 = self.hex_to_rgb(color1)
+        r2, g2, b2 = self.hex_to_rgb(color2)
 
-         r = int(r1 + (r2 - r1) * factor)
-         g = int(g1 + (g2 - g1) * factor)
-         b = int(b1 + (b2 - b1) * factor)
+        r = int(r1 + (r2 - r1) * factor)
+        g = int(g1 + (g2 - g1) * factor)
+        b = int(b1 + (b2 - b1) * factor)
 
-         return self.rgb_to_hex(r, g, b)
+        return self.rgb_to_hex(r, g, b)
 
-     def hex_to_rgb(self, hex_color):
-         """Convert hex color to RGB."""
-         hex_color = hex_color.lstrip('#')
-         return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    def hex_to_rgb(self, hex_color):
+        """Convert hex color to RGB."""
+        hex_color = hex_color.lstrip('#')
+        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
-     def rgb_to_hex(self, r, g, b):
-         """Convert RGB to hex color."""
-         return f'#{r:02x}{g:02x}{b:02x}'
+    def rgb_to_hex(self, r, g, b):
+        """Convert RGB to hex color."""
+        return f'#{r:02x}{g:02x}{b:02x}'
 
-     def lighten_color(self, color, factor, max_lighten=0.3):  # Reduced max lighten effect
-         """Lighten the color based on the factor (0.0 to 1.0) with a maximum lightening percentage."""
-         r, g, b = self.hex_to_rgb(color)
+    def lighten_color(self, color, factor, max_lighten=0.3):  # Reduced max lighten effect
+        """Lighten the color based on the factor (0.0 to 1.0) with a maximum lightening percentage."""
+        r, g, b = self.hex_to_rgb(color)
 
-         # Lighten only a fraction of the RGB values based on the factor
-         r = min(255, int(r + (255 - r) * (factor * max_lighten)))
-         g = min(255, int(g + (255 - g) * (factor * max_lighten)))
-         b = min(255, int(b + (255 - b) * (factor * max_lighten)))
+        # Lighten only a fraction of the RGB values based on the factor
+        r = min(255, int(r + (255 - r) * (factor * max_lighten)))
+        g = min(255, int(g + (255 - g) * (factor * max_lighten)))
+        b = min(255, int(b + (255 - b) * (factor * max_lighten)))
 
-         return self.rgb_to_hex(r, g, b)
+        return self.rgb_to_hex(r, g, b)
 
-     def rotate_galaxy(self):
-         # Update the angle for rotation
-         self.angle = (self.angle + 3) % 360  # Slow rotation
+    def rotate_galaxy(self):
+        # Update the angle for rotation
+        self.angle = (self.angle + 3) % 360  # Slow rotation
 
-         # Rotate and update spiral arms
-         for i, arm in enumerate(self.arms):
-             start_angle = (self.angle + i * (360 / self.num_arms)) % 360  # Update angle for each arm
-             self.canvas.itemconfig(arm, start=start_angle)
+        # Rotate and update spiral arms
+        for i, arm in enumerate(self.arms):
+            start_angle = (self.angle + i * (360 / self.num_arms)) % 360  # Update angle for each arm
+            self.canvas.itemconfig(arm, start=start_angle)
 
-             # Calculate the factor for color change based on the distance from the center
-             # Use a factor that varies as the angle approaches the center
-             factor = 0.5 * (1 + math.cos(math.radians(start_angle)))  # Cosine wave for smooth transition
-             color1 = "#00BFFF"  # Deep Sky Blue
-             color2 = "#1E90FF"  # Dodger Blue
-             new_color = self.interpolate_color(color1, color2, factor)
-             self.canvas.itemconfig(arm, outline=new_color)
+            # Calculate the factor for color change based on the distance from the center
+            # Use a factor that varies as the angle approaches the center
+            factor = 0.5 * (1 + math.cos(math.radians(start_angle)))  # Cosine wave for smooth transition
+            color1 = "#00BFFF"  # Deep Sky Blue
+            color2 = "#1E90FF"  # Dodger Blue
+            new_color = self.interpolate_color(color1, color2, factor)
+            self.canvas.itemconfig(arm, outline=new_color)
 
-             # Lighten the core color based on the color of the arm
-             new_core_color = self.lighten_color("#3a9bdc", factor)  # Use the new core color
-             self.canvas.itemconfig(self.core_id, fill=new_core_color)
+            # Lighten the core color based on the color of the arm
+            new_core_color = self.lighten_color("#3a9bdc", factor)  # Use the new core color
+            self.canvas.itemconfig(self.core_id, fill=new_core_color)
 
-         # Continue rotating if spinning is active
-         if self.is_spinning:
-             self.after(self.rotation_speed, self.rotate_galaxy)
+        # Continue rotating if spinning is active
+        if self.is_spinning:
+            self.after(self.rotation_speed, self.rotate_galaxy)
 
-     def start_spinning(self):
-         if not self.is_spinning:
-             self.is_spinning = True
-             self.rotate_galaxy()
+    def start_spinning(self):
+        if not self.is_spinning:
+            self.is_spinning = True
+            self.rotate_galaxy()
 
-     def stop_spinning(self):
-         self.is_spinning = False
+    def stop_spinning(self):
+        self.is_spinning = False
 
 
 #ALWAYS WIDGETS (top bar)-----------------------------------------------------
@@ -2345,7 +2333,7 @@ def historySettingButtons(tab, tab2):
             teacherPWPopup.thisDisplay()
             display_popup(teacherPWPopup)
 
-
+reset_oldMACID = None
 #GET STUDENT INFO
 class StudentMenu(ctk.CTkFrame):
     def insert_text(self, entry, text):
@@ -2423,9 +2411,11 @@ class StudentMenu(ctk.CTkFrame):
         self.warning_label = ctk.CTkLabel(self.nameFrame,text="Missing Information!",fg_color='red',font=('Arial',16,'bold'))
 
     def check_reset(self):
+        global reset_oldMACID
         firstname, lastname = getFirstLastName(self.macID)
         warning_confirmation.warning_confirmation_dict['reset ID check'][0] = f"Reset {firstname} {lastname}'s student ID?"
         warning_confirmation.warning_confirmation_dict['reset ID check'][3] = lambda i0 = self.macID: self.reset_macID(i0)
+        reset_oldMACID = self.macID
         self.close_popup()
         warning_confirmation.config("reset ID check")
 
@@ -2505,15 +2495,20 @@ class StudentMenu(ctk.CTkFrame):
         last_name = self.last_name_entry.get()
         selected_periods = self.get_selected_periods()
         if first_name and last_name and selected_periods:
-            if self.editing: #DELETE OLD STUDENT DATA IF ADDING NEW
-                getFromStudent_Periods("""delete from student_periods where macID = %s""", (self.macID,), False, False)
-                getFromStudent_Names("""delete from student_names where macID = %s""", (self.macID,), False, False)
-            #ADD NEW STUDENT INFO
-            for period_ID in selected_periods:
-                getFromStudent_Periods("INSERT INTO student_periods(macID, period_ID) values (%s, %s)", (self.macID, period_ID), False, False)
-            getFromStudent_Names("""INSERT INTO student_names(macID, first_name, last_name) values (%s, %s, %s)""", (self.macID,first_name.lower().title(),last_name.lower().title()), False, False)
-            teacherFrame.period_selected(teacherFrame.period_menu.get())
-            self.close_popup()
+            if not getFromStudent_Names("select macID from student_names where first_name = %s and last_name = %s", (first_name, last_name)): #if there is another student with the same name
+                if self.editing: #DELETE OLD STUDENT DATA IF ADDING NEW
+                    getFromStudent_Periods("""delete from student_periods where macID = %s""", (self.macID,), False, False)
+                    getFromStudent_Names("""delete from student_names where macID = %s""", (self.macID,), False, False)
+                #ADD NEW STUDENT INFO
+                for period_ID in selected_periods:
+                    getFromStudent_Periods("INSERT INTO student_periods(macID, period_ID) values (%s, %s)", (self.macID, period_ID), False, False)
+                getFromStudent_Names("""INSERT INTO student_names(macID, first_name, last_name) values (%s, %s, %s)""", (self.macID,first_name.lower().title(),last_name.lower().title()), False, False)
+                teacherFrame.period_selected(teacherFrame.period_menu.get())
+                self.close_popup()
+            else:
+                #CONTINUE HERE ON WHAT TO DO WITH MATCHING NAMES (JUST ASK FOR MIDDLE NAME OR RESET ID)
+                warning_confirmation.warning_confirmation_dict['matching name'][0] = f"There is already a student named {first_name} {last_name} in the system, are you attempting to reset their ID?"
+                warning_confirmation.config("matching name")
         else:
             self.warning_label.pack()
 
@@ -2794,170 +2789,170 @@ class EditAttendanceClass(ctk.CTkFrame):
 editAttendanceFrame = EditAttendanceClass(window)
 
 class dynamic_day_selectionClass(ctk.CTkFrame):
-     def __init__(self, parent,*args, **kwargs):
-         super().__init__(parent, *args, **kwargs,width=sWidth*3/7, height=sHeight/2,border_width=4,border_color='white',bg_color='transparent')
-         self.grid_propagate(0)
-         self.grid_columnconfigure(0, weight=1)
-         self.grid_columnconfigure(1, weight=1)
-         self.grid_rowconfigure(0, weight=1)
-         self.grid_rowconfigure(1, weight=10)
+    def __init__(self, parent,*args, **kwargs):
+        super().__init__(parent, *args, **kwargs,width=sWidth*3/7, height=sHeight/2,border_width=4,border_color='white',bg_color='transparent')
+        self.grid_propagate(0)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=10)
 
-         # Title label
-         self.titleFrame = ctk.CTkFrame(self,border_width=4,border_color='white',bg_color='white')
-         self.title_label = ctk.CTkLabel(self.titleFrame, text="Dynamic: Is Today an A or B Day?", font=("Roboto", 19,'bold'))
-         self.title_label.pack(side='top',pady=(20,0),anchor='center')
+        # Title label
+        self.titleFrame = ctk.CTkFrame(self,border_width=4,border_color='white',bg_color='white')
+        self.title_label = ctk.CTkLabel(self.titleFrame, text="Dynamic: Is Today an A or B Day?", font=("Roboto", 19,'bold'))
+        self.title_label.pack(side='top',pady=(20,0),anchor='center')
 
-         self.titleFrame.grid(column=0,row=0,columnspan=2,sticky='nsew')
+        self.titleFrame.grid(column=0,row=0,columnspan=2,sticky='nsew')
 
-         # Button "A" on the left side
-         self.button_a = ctk.CTkButton(self, text="A", font=("Roboto", 25,'bold'),command=lambda:self.setAorBday('A'))
-         self.button_a.grid(column=0,row=1,sticky='nsew',padx=(10,2),pady=10)
-
-
-         # Button "B" on the right side
-         self.button_b = ctk.CTkButton(self, text="B", font=("Roboto", 25,'bold'),command=lambda:self.setAorBday("B"))
-         self.button_b.grid(column=1,row=1,sticky='nsew',padx=(2,10),pady=10)
+        # Button "A" on the left side
+        self.button_a = ctk.CTkButton(self, text="A", font=("Roboto", 25,'bold'),command=lambda:self.setAorBday('A'))
+        self.button_a.grid(column=0,row=1,sticky='nsew',padx=(10,2),pady=10)
 
 
-     def setAorBday(self, daytype):
-         global currentPopup
-         day = date.today().weekday()
-         getFromSchedule_Days("update schedule_days set daytype = %s where schedule_ID = %s and weekday = %s", (daytype, get_active_schedule_ID(), day), False, False)
-         periodListPop()
-         hide_popup(self)
-         currentPopup = None
+        # Button "B" on the right side
+        self.button_b = ctk.CTkButton(self, text="B", font=("Roboto", 25,'bold'),command=lambda:self.setAorBday("B"))
+        self.button_b.grid(column=1,row=1,sticky='nsew',padx=(2,10),pady=10)
+
+
+    def setAorBday(self, daytype):
+        global currentPopup
+        day = date.today().weekday()
+        getFromSchedule_Days("update schedule_days set daytype = %s where schedule_ID = %s and weekday = %s", (daytype, get_active_schedule_ID(), day), False, False)
+        periodListPop()
+        hide_popup(self)
+        currentPopup = None
 fridayperiodframe = dynamic_day_selectionClass(window)
 
 class CustomKeyboard(ctk.CTkFrame):
-     def __init__(self, master):
-         super().__init__(master)
-         self.target_entry = None
-         self.is_caps = False  # Track if caps is active
+    def __init__(self, master):
+        super().__init__(master)
+        self.target_entry = None
+        self.is_caps = False  # Track if caps is active
 
 
-         # Configure the keyboard frame's background color
-         self.configure(fg_color="gray15", width=790, height=370, border_width=4, border_color='white')
+        # Configure the keyboard frame's background color
+        self.configure(fg_color="gray15", width=790, height=370, border_width=4, border_color='white')
 
 
-         # Default key layout
-         self.create_keyboard()
+        # Default key layout
+        self.create_keyboard()
 
-     def get_target(self):
-         return self.target_entry
+    def get_target(self):
+        return self.target_entry
 
-     def set_target(self, target):
-         self.target_entry = target
-         self.copy_entry.delete(0, "end")
-         self.copy_entry.insert(0, self.target_entry.get())
+    def set_target(self, target):
+        self.target_entry = target
+        self.copy_entry.delete(0, "end")
+        self.copy_entry.insert(0, self.target_entry.get())
 
-     def create_keyboard(self):
-         # Define keyboard rows based on the layout in the image
-         keys = [
-             ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-             ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-             ["a", "s", "d", "f", "g", "h", "j", "k", "l", "?"],
-             ["!", "z", "x", "c", "v", "b", "n", "m", ".", ","]
-         ]
-
-
-         # Side keys and bottom row
-         self.side_keys = ["Delete", "Rename", "Shift", "Clear", "EXIT"]
+    def create_keyboard(self):
+        # Define keyboard rows based on the layout in the image
+        keys = [
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+            ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+            ["a", "s", "d", "f", "g", "h", "j", "k", "l", "?"],
+            ["!", "z", "x", "c", "v", "b", "n", "m", ".", ","]
+        ]
 
 
-         # Key dimensions for better touch accuracy
-         key_width = 60
-         key_height = 55
-         row_offset_y = 5  # Space between rows
-
-         #COPY ENTRY
-         self.copy_entry = ctk.CTkEntry(self, width=500, height=35, font=('Space Grotesk', 18))
-         self.copy_entry.place(relx=0.5,y=30, anchor='center')
-         self.copy_entry.bind("<FocusIn>", lambda e: self.target_entry.focus_set())
-
-         # Place main keys in grid layout
-         for row_index, row_keys in enumerate(keys):
-             x_offset = 10  # Left padding
-             for key in row_keys:
-                 key_button = ctk.CTkButton(self, text=key, font=('Space Grotesk', 18, 'bold'),fg_color="#1f6aa5", text_color="white")
-                 key_button.configure(width=key_width, height=key_height)
-                 key_button.configure(command=lambda k=key: self.on_key_press(k))
-                 key_button.place(x=x_offset, y=row_index * (key_height + row_offset_y) + 60)
-                 x_offset += key_width + 5
+        # Side keys and bottom row
+        self.side_keys = ["Delete", "Rename", "Shift", "Clear", "EXIT"]
 
 
-         # Place side keys
-         for i, key in enumerate(self.side_keys):
-             y_offset = i * (60) + 60
-             key_button = ctk.CTkButton(self, text=key, font=('Space Grotesk', 18, 'bold'),fg_color="#1f6aa5", text_color="white")
-             key_button.configure(width=key_width + 20, height=key_height)
-             key_button.configure(command=lambda k=key: self.on_key_press(k))
-             if key == 'Delete' or key == 'Clear':
-                 key_button.configure(fg_color="red")
-             if key == 'Rename':
-                 key_button.configure(fg_color="green")
-             key_button.place(x=700, y=y_offset)
+        # Key dimensions for better touch accuracy
+        key_width = 60
+        key_height = 55
+        row_offset_y = 5  # Space between rows
+
+        #COPY ENTRY
+        self.copy_entry = ctk.CTkEntry(self, width=500, height=35, font=('Space Grotesk', 18))
+        self.copy_entry.place(relx=0.5,y=30, anchor='center')
+        self.copy_entry.bind("<FocusIn>", lambda e: self.target_entry.focus_set())
+
+        # Place main keys in grid layout
+        for row_index, row_keys in enumerate(keys):
+            x_offset = 10  # Left padding
+            for key in row_keys:
+                key_button = ctk.CTkButton(self, text=key, font=('Space Grotesk', 18, 'bold'),fg_color="#1f6aa5", text_color="white")
+                key_button.configure(width=key_width, height=key_height)
+                key_button.configure(command=lambda k=key: self.on_key_press(k))
+                key_button.place(x=x_offset, y=row_index * (key_height + row_offset_y) + 60)
+                x_offset += key_width + 5
 
 
-         # Place extended space bar below "!" through "k"
-         space_x_offset = 10  # Left padding for space
-         space_button = ctk.CTkButton(self, text=" ", fg_color="#1f6aa5", text_color="white")
-         space_button.configure(width=key_width * 10 + 9*5, height=key_height)  # Extended space bar width
-         space_button.configure(command=lambda k=" ": self.on_key_press(k))
-         space_button.place(x=space_x_offset, y=len(keys) * (key_height + row_offset_y) + 60)  # Position below main keys
+        # Place side keys
+        for i, key in enumerate(self.side_keys):
+            y_offset = i * (60) + 60
+            key_button = ctk.CTkButton(self, text=key, font=('Space Grotesk', 18, 'bold'),fg_color="#1f6aa5", text_color="white")
+            key_button.configure(width=key_width + 20, height=key_height)
+            key_button.configure(command=lambda k=key: self.on_key_press(k))
+            if key == 'Delete' or key == 'Clear':
+                key_button.configure(fg_color="red")
+            if key == 'Rename':
+                key_button.configure(fg_color="green")
+            key_button.place(x=700, y=y_offset)
 
 
-     def toggle_caps(self):
-         """Toggle between lowercase and uppercase keys."""
-         self.is_caps = not self.is_caps
-         for widget in self.winfo_children():
-             if isinstance(widget, ctk.CTkButton) and widget.cget("text").isalpha() and widget.cget("text") != "Delete" and widget.cget("text") != "Rename" and widget.cget("text") != "Clear" and widget.cget("text") != "EXIT":
-                 # Toggle key case
-                 new_text = widget.cget("text").upper() if self.is_caps else widget.cget("text").lower()
-                 if widget.cget("text") == "SHIFT":
-                     new_text="Shift"
-                 widget.configure(text=new_text)
+        # Place extended space bar below "!" through "k"
+        space_x_offset = 10  # Left padding for space
+        space_button = ctk.CTkButton(self, text=" ", fg_color="#1f6aa5", text_color="white")
+        space_button.configure(width=key_width * 10 + 9*5, height=key_height)  # Extended space bar width
+        space_button.configure(command=lambda k=" ": self.on_key_press(k))
+        space_button.place(x=space_x_offset, y=len(keys) * (key_height + row_offset_y) + 60)  # Position below main keys
 
 
-     def on_key_press(self, key):
-         global currentTAB
-         if key == "Delete":
-             current_text = self.target_entry.get()
-             self.target_entry.delete(0, "end")
-             self.target_entry.insert("end", current_text[:-1])
-             self.copy_entry.delete(0, "end")
-             self.copy_entry.insert("end", current_text[:-1])
-         elif key == "Clear":
-             self.target_entry.delete(0, "end")
-             self.copy_entry.delete(0, "end")
-         elif key == "Rename":
-             self.hide_keyboard()
-         elif key == "Shift":
-             self.toggle_caps()
-         elif key == "Space":
-             self.target_entry.insert("end", " ")
-             self.copy_entry.insert("end", " ")
-         elif key == "EXIT":
-             self.hide_keyboard()
-         else:
-             if self.is_caps:
-                 self.target_entry.insert("end", key.upper())
-                 self.copy_entry.insert("end", key.upper())
-                 self.toggle_caps()
-             else:
-                 self.target_entry.insert("end", key.lower())
-                 self.copy_entry.insert("end", key.lower())
+    def toggle_caps(self):
+        """Toggle between lowercase and uppercase keys."""
+        self.is_caps = not self.is_caps
+        for widget in self.winfo_children():
+            if isinstance(widget, ctk.CTkButton) and widget.cget("text").isalpha() and widget.cget("text") != "Delete" and widget.cget("text") != "Rename" and widget.cget("text") != "Clear" and widget.cget("text") != "EXIT":
+                # Toggle key case
+                new_text = widget.cget("text").upper() if self.is_caps else widget.cget("text").lower()
+                if widget.cget("text") == "SHIFT":
+                    new_text="Shift"
+                widget.configure(text=new_text)
 
 
-     def show_keyboard(self, event=None):
-         """Place the keyboard at the center of the screen."""
-         display_popup(self)
+    def on_key_press(self, key):
+        global currentTAB
+        if key == "Delete":
+            current_text = self.target_entry.get()
+            self.target_entry.delete(0, "end")
+            self.target_entry.insert("end", current_text[:-1])
+            self.copy_entry.delete(0, "end")
+            self.copy_entry.insert("end", current_text[:-1])
+        elif key == "Clear":
+            self.target_entry.delete(0, "end")
+            self.copy_entry.delete(0, "end")
+        elif key == "Rename":
+            self.hide_keyboard()
+        elif key == "Shift":
+            self.toggle_caps()
+        elif key == "Space":
+            self.target_entry.insert("end", " ")
+            self.copy_entry.insert("end", " ")
+        elif key == "EXIT":
+            self.hide_keyboard()
+        else:
+            if self.is_caps:
+                self.target_entry.insert("end", key.upper())
+                self.copy_entry.insert("end", key.upper())
+                self.toggle_caps()
+            else:
+                self.target_entry.insert("end", key.lower())
+                self.copy_entry.insert("end", key.lower())
 
 
-     def hide_keyboard(self, event=None):
-         """Remove the keyboard from the screen."""
-         self.target_entry = None
-         self.focus_set()
-         hide_popup(self)
+    def show_keyboard(self, event=None):
+        """Place the keyboard at the center of the screen."""
+        display_popup(self)
+
+
+    def hide_keyboard(self, event=None):
+        """Remove the keyboard from the screen."""
+        self.target_entry = None
+        self.focus_set()
+        hide_popup(self)
 keyboardFrame = CustomKeyboard(window)
 
 class warning_confirmation_class(ctk.CTkFrame):
@@ -2989,10 +2984,11 @@ class warning_confirmation_class(ctk.CTkFrame):
                                           "reset ID check": ["title", "*This will re-assign what student ID is associated with this student.*", "red", "command"],
                                           "reset ID": ["Scan New ID!", "note", "orange", "notice"],
                                           "reset ID success" : ["Successfully Reset ID!", "note", "green", None],
+                                          "reset ID fail" : ["Failed to Reset ID!", "note", "red", None],
                                           "remove schedule check" : ["Are you sure?", "note", "red", "command"],
                                           "remove period check" : ["Are you sure?", "note", "red", "command"],
                                           "restart check" : ["Restart System?", "*This will temporarily refresh the system (no data will be lost)*", "orange", lambda: teacherFrame.restart_script()]
-                                         }
+                                          }
 
 
         #title
