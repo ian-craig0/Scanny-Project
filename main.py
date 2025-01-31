@@ -206,7 +206,7 @@ def getAttendance(time, period_ID, cursor):
     SELECT 
         CASE 
             WHEN %s <= (p.start_time + p.late_var) THEN 2  -- PRESENT
-            WHEN (%s - (p.start_time + p.late_var)) >= s.absent_var THEN 0  -- ABSENT
+            WHEN (%s - (p.start_time + s.absent_var + 5)) >= 0 THEN 0  -- ABSENT
             ELSE 1  -- TARDY
         END AS attendance_status
     FROM periods p
@@ -1191,7 +1191,7 @@ class setupClass(ctk.CTkFrame):
         getFromSystem_Control("update system_control set active_schedule_ID = %s", (None,), False, False)
         #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
         getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
-        print("deleting schedule" + str(schedule_ID))
+        self.populate_schedule_list()
         hide_popup(warning_confirmation)
 
 
@@ -1405,7 +1405,6 @@ class setupClass(ctk.CTkFrame):
 
         #INPUT PERIOD INFO FROM PERIOD FRAME
         name = self.PI_LF_period_entry.get() #GET NAME ENTRY VALUE
-        self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
 
         if block:
             daytype = self.PI_LF_daytype_segmented_button.get() #GET DAYTYPE ENTRY
@@ -1414,27 +1413,49 @@ class setupClass(ctk.CTkFrame):
             daytype = None
 
         start_time = time_to_minutes(self.PI_RF_start_value_label.cget('text'))
-        self.PI_RF_start_hour_var.set("12")
-        self.PI_RF_start_minute_var.set("00")
+
 
         end_time = time_to_minutes(self.PI_RF_end_value_label.cget('text'))
-        self.PI_RF_end_hour_var.set("12")
-        self.PI_RF_end_minute_var.set("00")
+
 
         late_var = int(self.PI_RF_tardy_value_label.cget('text'))
-        self.PI_RF_tardy_minute_var.set('05')
 
         #CHECK IF EVERYTHING HAS INPUT AND THEN SUBMIT DATA
         if name and start_time and end_time and late_var and (not block or daytype):
             if not daytype: #IF NO VALUE IS RETURNED (TRADITIONAL SCHEDULE)
                 daytype = '-'
-            if period_ID: #EDIT EXISTING PERIOD
-                getFromPeriods("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
-            else: #ADD NEW PERIOD
-                getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
-            self.display_period_list(schedule_ID)
+            if start_time < end_time:
+                if block:
+                    existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and daytype = %s", (schedule_ID, daytype))
+                else:
+                    existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s", (schedule_ID,))
+                for existing_start, existing_end in existing_periods:
+                    if not ((start_time < existing_start and end_time <= existing_start) or (start_time >= existing_end)):
+                        warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Timing Values!'
+                        warning_confirmation.warning_confirmation_dict["period input"][1] = "*The start or end time overlap with an existing period.*"
+                        warning_confirmation.config('period input')
+                        return
+                if period_ID: #EDIT EXISTING PERIOD
+                    getFromPeriods("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
+                else: #ADD NEW PERIOD
+                    getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
+                self.display_period_list(schedule_ID)
+                self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
+                self.PI_RF_start_hour_var.set("12")
+                self.PI_RF_start_minute_var.set("00")
+                self.PI_RF_end_hour_var.set("12")
+                self.PI_RF_end_minute_var.set("00")
+                self.PI_RF_tardy_minute_var.set('05')
+
+
+            else:
+                warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Timing Values!'
+                warning_confirmation.warning_confirmation_dict["period input"][1] = "*The start time must be earlier than the end time.*"
+                warning_confirmation.config('period input')
         else:
             #DISPLAY NEED MORE INPUTS
+            warning_confirmation.warning_confirmation_dict["period input"][0] = 'Missing Period Values!'
+            warning_confirmation.warning_confirmation_dict["period input"][1] = "Please complete all required fields before submitting."
             warning_confirmation.config('period input')
 
     def submit_weekdays(self, schedule_ID, edit):
@@ -2431,6 +2452,15 @@ class StudentMenu(ctk.CTkFrame):
         self.close_popup()
         warning_confirmation.config("remove student")
 
+    def different_name(self, first_name, last_name):
+        warning_confirmation.warning_confirmation_dict['different name'][1] = f"*Please try again and add a middle name to your first/last name to be distinct from {first_name} {last_name}.*"
+        warning_confirmation.config("different name")
+
+    def reset_ID_notice(self, first_name, last_name):
+        warning_confirmation.warning_confirmation_dict['reset ID notice'][1] = f"*Please ask a teacher to assist with ID re-assigning for {first_name} {last_name}.*"
+        warning_confirmation.config("reset ID notice")
+
+
     def update_return(self, tab):
         self.returnTAB = tab
 
@@ -2500,14 +2530,17 @@ class StudentMenu(ctk.CTkFrame):
                     getFromStudent_Periods("""delete from student_periods where macID = %s""", (self.macID,), False, False)
                     getFromStudent_Names("""delete from student_names where macID = %s""", (self.macID,), False, False)
                 #ADD NEW STUDENT INFO
+                getFromStudent_Names("""INSERT INTO student_names(macID, first_name, last_name) values (%s, %s, %s)""", (self.macID,first_name.lower().title(),last_name.lower().title()), False, False)
                 for period_ID in selected_periods:
                     getFromStudent_Periods("INSERT INTO student_periods(macID, period_ID) values (%s, %s)", (self.macID, period_ID), False, False)
-                getFromStudent_Names("""INSERT INTO student_names(macID, first_name, last_name) values (%s, %s, %s)""", (self.macID,first_name.lower().title(),last_name.lower().title()), False, False)
                 teacherFrame.period_selected(teacherFrame.period_menu.get())
                 self.close_popup()
             else:
                 #CONTINUE HERE ON WHAT TO DO WITH MATCHING NAMES (JUST ASK FOR MIDDLE NAME OR RESET ID)
-                warning_confirmation.warning_confirmation_dict['matching name'][0] = f"There is already a student named {first_name} {last_name} in the system, are you attempting to reset their ID?"
+                self.close_popup()
+                warning_confirmation.warning_confirmation_dict['matching name'][4] = lambda i0 = first_name, i1 = last_name: self.different_name(i0, i1)
+                warning_confirmation.warning_confirmation_dict['matching name'][3] = lambda i0 = first_name, i1 = last_name : self.reset_ID_notice(i0, i1)
+                warning_confirmation.warning_confirmation_dict['matching name'][1] = f"There is already a student named {first_name} {last_name} in the system, are you attempting to reset their ID?"
                 warning_confirmation.config("matching name")
         else:
             self.warning_label.pack()
@@ -2969,26 +3002,30 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.current_key = None
 
         #Dictionary for each popup
-        self.warning_confirmation_dict = {"no active schedule": ["No Active Schedule!", "Your teacher must select an active schedule.", 'red', None],
-                                          "no schedule today": ["Check-in Unavailable Today!", "The current schedule is not active today. Please contact your teacher if you have questions.", 'orange', None],
-                                          "no class currently": ["No Scheduled Class!", "There is no class scheduled at this time. Please check your class schedule or return during your designated period.", 'orange', None],
-                                          "double scan": ['Double Scan!', "You have already checked in for this period.", 'orange', None],
-                                          "wrong period": ['Wrong period!', "You are not in the current period.", 'orange', None],
-                                          "schedule input": ['Missing Schedule Values!', "Please complete all required fields before submitting.", 'orange', None],
-                                          "period input": ['Missing Period Values!', "Please complete all required fields before submitting.", 'orange', None],
-                                          "weekday input": ['Missing Weekday Values!', "Please complete all required fields before submitting.", 'orange',  None],
-                                          "unexpected error": ["An Unexpected Error Has Occured!", "error", 'red', None],
-                                          "factory reset": ["Factory Reset Device?", "*Warning! This will clear everything on the device (includes schedules, periods, students, and passwords).*", "red", lambda: self.config("reset check")],
-                                          "reset check": ["Are you sure?", "*This action is not reversible.*", "red", lambda: self.reset_display_password_menu()],
-                                          "remove student": ["title", "*This will remove them from the system permanently.*", "red", "command"],
-                                          "reset ID check": ["title", "*This will re-assign what student ID is associated with this student.*", "red", "command"],
-                                          "reset ID": ["Scan New ID!", "note", "orange", "notice"],
-                                          "reset ID success" : ["Successfully Reset ID!", "note", "green", None],
-                                          "reset ID fail" : ["Failed to Reset ID!", "note", "red", None],
-                                          "remove schedule check" : ["Are you sure?", "note", "red", "command"],
-                                          "remove period check" : ["Are you sure?", "note", "red", "command"],
-                                          "restart check" : ["Restart System?", "*This will temporarily refresh the system (no data will be lost)*", "orange", lambda: teacherFrame.restart_script()]
+        self.warning_confirmation_dict = {"no active schedule": ["No Active Schedule!", "Your teacher must select an active schedule.", 'red', None, None],
+                                          "no schedule today": ["Check-in Unavailable Today!", "The current schedule is not active today. Please contact your teacher if you have questions.", 'orange', None, None],
+                                          "no class currently": ["No Scheduled Class!", "There is no class scheduled at this time. Please check your class schedule or return during your designated period.", 'orange', None, None],
+                                          "double scan": ['Double Scan!', "You have already checked in for this period.", 'orange', None, None],
+                                          "wrong period": ['Wrong period!', "You are not in the current period.", 'orange', None, None],
+                                          "schedule input": ['Missing Schedule Values!', "Please complete all required fields before submitting.", 'orange', None, None],
+                                          "period input": ["title", "note", 'orange', None, None],
+                                          "weekday input": ['Missing Weekday Values!', "Please complete all required fields before submitting.", 'orange',  None, None],
+                                          "unexpected error": ["An Unexpected Error Has Occured!", "error", 'red', None, None],
+                                          "factory reset": ["Factory Reset Device?", "*Warning! This will clear everything on the device (includes schedules, periods, students, and passwords).*", "red", lambda: self.config("reset check"), None],
+                                          "reset check": ["Are you sure?", "*This action is not reversible.*", "red", lambda: self.reset_display_password_menu(), None],
+                                          "remove student": ["title", "*This will remove them from the system permanently.*", "red", "command", None],
+                                          "reset ID check": ["title", "*This will re-assign what student ID is associated with this student.*", "red", "command", None],
+                                          "reset ID": ["Scan New ID!", "note", "orange", "notice", None],
+                                          "reset ID success" : ["Successfully Reset ID!", "note", "green", None, None],
+                                          "reset ID fail" : ["Failed to Reset ID!", "note", "red", None, None],
+                                          "remove schedule check" : ["Are you sure?", "note", "red", "command", None],
+                                          "remove period check" : ["Are you sure?", "note", "red", "command", None],
+                                          "restart check" : ["Restart System?", "*This will temporarily refresh the system (no data will be lost)*", "orange", lambda: teacherFrame.restart_script(), None],
+                                          "matching name" : ["Invalid Name!", "note", "red", "command", "command"],
+                                          "different name" : ["Warning!", "note", "orange", None, None],
+                                          "reset ID notice" : ["Notice!", "note", "orange", None, None]
                                           }
+
 
 
         #title
@@ -2996,7 +3033,7 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.title_label.grid(row=0, column=0, pady=(10, 5), padx = 5, sticky='n')
 
         #notice
-        self.notice_label = ctk.CTkLabel(self, font=('Space Grotesk', 15), wraplength=sWidth/2-16)
+        self.notice_label = ctk.CTkLabel(self, font=('Space Grotesk', 15), wraplength=sWidth/2-24)
         self.notice_label.grid(row=1, column=0, pady=(5, 15), padx = 5, sticky='n')
 
         #lower container frame
@@ -3014,7 +3051,7 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.yes_button = ctk.CTkButton(self.option_frame, text='Yes', font=('Space Grotesk', 17, 'bold'), height=60)
         self.yes_button.grid(sticky='e', row=0, column=0, padx=20)
 
-        self.no_button = ctk.CTkButton(self.option_frame, text='No', font=('Space Grotesk', 17, 'bold'), height=60,command = lambda: hide_popup(self))
+        self.no_button = ctk.CTkButton(self.option_frame, text='No', font=('Space Grotesk', 17, 'bold'), height=60)
         self.no_button.grid(sticky='w', row=0, column=1, padx=20)
 
         self.warning_image = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/alreadyCheckExitButtonImage.png"),size=(int(sWidth/9),int(sWidth/9)))
@@ -3043,10 +3080,15 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.title_label.configure(text=warning_info[0], text_color = warning_info[2])
         self.notice_label.configure(text=warning_info[1], text_color = warning_info[2])
         command = warning_info[3]
+        no_command = warning_info[4]
         if command: #if there is a command, display yes/no
             if command != "notice":
                 self.option_frame.pack(expand=True, fill='both')
                 self.yes_button.configure(command = command)
+            if no_command:
+                self.no_button.configure(command = no_command)
+            else:
+                self.no_button.configure(command = lambda: hide_popup(self))
         else:
             self.exit_button.pack(anchor='center')
         display_popup(self)
