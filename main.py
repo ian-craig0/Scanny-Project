@@ -258,7 +258,7 @@ def newDay():
 def time_to_minutes(timeStr):
     # Split the input string into hours and minutes
     hours, minutes = map(int, timeStr.split(":"))
-    # Convert the time to total minutes since midnight
+    # Convert the time to total minutes since mid6night
     total_minutes = hours * 60 + minutes
     return total_minutes
 
@@ -390,7 +390,7 @@ def checkIN():
                                             else: #IF THEY ARE IN THE CURRENT PERIOD ON THIS DAY AND HAVEN'T CHECKED IN YET
                                                 status = getAttendance(scan_time, period_ID, checkInCursor)
                                                 #NEED REASON LOGIC (FOR NOW ALWAYS NULL)
-                                                checkInCursor.execute("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None))
+                                                callMultiple(checkInCursor, """INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
                                                 tabSwap(2)
                                                 studentListPop(period_ID)
                                                 successScan(scan_time, ID, status)
@@ -415,7 +415,6 @@ def checkIN():
                                 warning_confirmation.config("reset ID fail")
                             else:
                                 firstname, lastname = getFirstLastName(reset_oldMACID)
-                                getFromStudent_Periods("update student_periods set macID = %s where macID = %s", (ID,reset_oldMACID), False, False)
                                 getFromStudent_Names("update student_names set macID = %s where macID = %s", (ID,reset_oldMACID), False, False)
                                 warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
                                 warning_confirmation.config("reset ID success")
@@ -1425,29 +1424,33 @@ class setupClass(ctk.CTkFrame):
             if not daytype: #IF NO VALUE IS RETURNED (TRADITIONAL SCHEDULE)
                 daytype = '-'
             if start_time < end_time:
-                if block:
-                    existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and daytype = %s", (schedule_ID, daytype))
+                absent_var = getFromSchedules("select absent_var from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
+                if late_var < absent_var:
+                    if block:
+                        existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and daytype = %s and period_ID != %s", (schedule_ID, daytype, period_ID))
+                    else:
+                        existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and period_ID != %s", (schedule_ID, period_ID))
+                    for existing_start, existing_end in existing_periods:
+                        if start_time < existing_end and end_time > existing_start and start_time != existing_end:
+                            warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Timing Values!'
+                            warning_confirmation.warning_confirmation_dict["period input"][1] = "*The start or end time overlap with an existing period.*"
+                            warning_confirmation.config('period input')
+                            return
+                    if period_ID: #EDIT EXISTING PERIOD
+                        getFromPeriods("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
+                    else: #ADD NEW PERIOD
+                        getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
+                    self.display_period_list(schedule_ID)
+                    self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
+                    self.PI_RF_start_hour_var.set("12")
+                    self.PI_RF_start_minute_var.set("00")
+                    self.PI_RF_end_hour_var.set("12")
+                    self.PI_RF_end_minute_var.set("00")
+                    self.PI_RF_tardy_minute_var.set('05')
                 else:
-                    existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s", (schedule_ID,))
-                for existing_start, existing_end in existing_periods:
-                    if not ((start_time < existing_start and end_time <= existing_start) or (start_time >= existing_end)):
-                        warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Timing Values!'
-                        warning_confirmation.warning_confirmation_dict["period input"][1] = "*The start or end time overlap with an existing period.*"
-                        warning_confirmation.config('period input')
-                        return
-                if period_ID: #EDIT EXISTING PERIOD
-                    getFromPeriods("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
-                else: #ADD NEW PERIOD
-                    getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
-                self.display_period_list(schedule_ID)
-                self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
-                self.PI_RF_start_hour_var.set("12")
-                self.PI_RF_start_minute_var.set("00")
-                self.PI_RF_end_hour_var.set("12")
-                self.PI_RF_end_minute_var.set("00")
-                self.PI_RF_tardy_minute_var.set('05')
-
-
+                    warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Tardy Value!'
+                    warning_confirmation.warning_confirmation_dict["period input"][1] = f"*The tardy value must be less than the absent value for this schedule ({absent_var} minutes).*"
+                    warning_confirmation.config('period input')
             else:
                 warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Timing Values!'
                 warning_confirmation.warning_confirmation_dict["period input"][1] = "*The start time must be earlier than the end time.*"
@@ -1694,8 +1697,8 @@ class historyFrameClass(ctk.CTkFrame):
         if filters:
             history_curs = db.cursor()
             query = "SELECT scan_ID, macID, scan_date, scan_time, status, period_ID, reason FROM scans WHERE " + " AND ".join(filters) + " ORDER BY scan_date DESC"
-            history_curs.execute(query, variables)
-            students = history_curs.fetchall()
+            students = callMultiple(history_curs, query, variables)
+
 
 
             # Display the fetched students in the scrollable frame
@@ -1917,11 +1920,10 @@ class settingsClass(ctk.CTkFrame):
 
                         # Move to the next column for a 2-column layout
                         col = (col + 1) % 2
-                else:
-                    def command():
-                        tabSwap(5)
-                        setupFrame.display_student_assignment_frame(period_ID, period_name[3:])
-                    ctk.CTkButton(self.scrollable_frame, text="+", font = ('Space Grotesk',20, 'bold'),text_color='blue', fg_color="lightgrey", corner_radius=10, height =60,border_color="gray",border_width=2,command = lambda: command()).grid(row=0, column=0, padx=10,pady=5,sticky='nsew', columnspan=2)
+                def command():
+                    tabSwap(5)
+                    setupFrame.display_student_assignment_frame(period_ID, period_name[3:])
+                ctk.CTkButton(self.scrollable_frame, text="+", font = ('Space Grotesk',20, 'bold'),text_color='blue', fg_color="lightgrey", corner_radius=10, height =50,border_color="gray",border_width=2,command = lambda: command()).grid(row=(i+1)//2, column=col, padx=10,pady=5,sticky='nsew')
                 self.scrollable_frame._parent_canvas.yview_moveto(0)
                 # Update layout and style to ensure even distribution
                 self.scrollable_frame.grid_columnconfigure(0, weight=1)
@@ -2525,7 +2527,7 @@ class StudentMenu(ctk.CTkFrame):
         last_name = self.last_name_entry.get()
         selected_periods = self.get_selected_periods()
         if first_name and last_name and selected_periods:
-            if not getFromStudent_Names("select macID from student_names where first_name = %s and last_name = %s", (first_name, last_name)): #if there is another student with the same name
+            if not getFromStudent_Names("select macID from student_names where first_name = %s and last_name = %s and macID != %s", (first_name, last_name, self.macID)): #if there is another student with the same name
                 if self.editing: #DELETE OLD STUDENT DATA IF ADDING NEW
                     getFromStudent_Periods("""delete from student_periods where macID = %s""", (self.macID,), False, False)
                     getFromStudent_Names("""delete from student_names where macID = %s""", (self.macID,), False, False)
