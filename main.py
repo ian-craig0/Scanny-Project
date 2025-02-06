@@ -12,6 +12,7 @@ import random
 
 #REOPENING CODE
 import sys
+import subprocess
 
 #RFID SCANNER AND MYSQL IMPORTS
 from PiicoDev_RFID import PiicoDev_RFID
@@ -55,6 +56,7 @@ def displayError(error):
     warning_confirmation.config("unexpected error")
 
 def reconnect():
+    print("reconnected!")
     global db
     try:
         db = MySQLdb.connect(
@@ -76,20 +78,20 @@ def callMultiple(cursor, query, params=None, fetchone=False, get=True, retries=4
             if get:
                 return cursor.fetchone() if fetchone else cursor.fetchall()
             else:
-                break  # For non-fetch queries, simply exit after execution
+                return None  # For non-fetch queries, simply exit after execution
         except MySQLdb.OperationalError as err:
             if err.args[0] == 2006:  # MySQL server has gone away
                 # Attempt to reconnect and reinitialize the cursor
                 reconnect()
                 if db is None:
-                    return "error" if get else None  # Indicate failure
+                    raise ConnectionError("Database reconnection failed.")  # Indicate failure
                 cursor = db.cursor()  # Refresh the cursor after reconnecting
             else:
                 if attempts == retries - 1:
-                    return "error" if get else None
+                    raise err
         except mysql.connector.Error as err:
             if attempts == retries - 1:
-                return "error" if get else displayError(err)
+                raise err
 
         # Increment attempts and wait before retrying
         attempts += 1
@@ -271,12 +273,59 @@ def timeConvert(minutes):
         hours = 12  # Midnight or Noon should be 12, not 0
     return f"{hours}:{mins:02d} {period}"
 
+def period_transition_check(time, curr_date):
+    global currentTAB
+    starting_period_query = """SELECT p.period_ID
+FROM periods p
+JOIN schedules s ON p.schedule_ID = s.schedule_ID
+LEFT JOIN schedule_days sd ON p.schedule_ID = sd.schedule_ID AND sd.weekday = %s
+WHERE p.start_time = %s
+AND p.schedule_ID = %s
+AND (
+    s.type <> 1 OR (s.type = 1 AND p.block_val = sd.daytype)
+);"""
+
+    ending_period_query = """SELECT p.period_ID
+FROM periods p
+JOIN schedules s ON p.schedule_ID = s.schedule_ID
+LEFT JOIN schedule_days sd ON p.schedule_ID = sd.schedule_ID AND sd.weekday = %s
+WHERE p.end_time = %s
+AND p.schedule_ID = %s
+AND (
+    s.type <> 1 OR (s.type = 1 AND p.block_val = sd.daytype)
+);"""
+
+    missing_student_query = """SELECT sp.macID
+FROM student_periods sp
+LEFT JOIN scans s
+ON sp.macID = s.macID
+AND s.period_ID = %s
+AND s.scan_date = CURDATE()
+WHERE sp.period_ID = %s
+AND s.macID IS NULL;"""
+    active_schedule_ID = get_active_schedule_ID()
+    starting_period = getFromPeriods(starting_period_query, (date.today().weekday(), time, active_schedule_ID), True)
+    ending_period = getFromPeriods(ending_period_query, (date.today().weekday(), time, active_schedule_ID), True)
+    if starting_period:
+        if currentTAB == 1 or currentTAB == 2:
+            tabSwap(2)
+            studentListPop(starting_period[0])
+
+    if ending_period:
+        tabSwap(1)
+        ending_per_ID = ending_period[0]
+        absent_students = getFromScans(missing_student_query, (ending_per_ID, ending_per_ID))
+        absent_scan_data = [(ending_per_ID, active_schedule_ID, macID[0], curr_date, -1, 0, None) for macID in absent_students]
+        with db.cursor() as absent_curs:
+            absent_curs.executemany("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", absent_scan_data)
+
 #TIME LOOP
 prevDate = date.today() - timedelta(days=1)
 current_time = time_to_minutes(strftime("%H:%M"))
+prevMinute = current_time
+
 def timeFunc():
-    global prevDate
-    global current_time
+    global prevDate, prevMinute, current_time
     currDate = date.today()
     if currDate != prevDate:
         newDay()
@@ -284,12 +333,15 @@ def timeFunc():
     timeLabel.configure(text=strftime('%I:%M:%S %p')) #UPDATE TOPBAR WIDGET
     dateLabel.configure(text=strftime("%m-%d-%Y")) #          v
     current_time = time_to_minutes(strftime("%H:%M"))
+
+    if current_time != prevMinute:
+        period_transition_check(current_time, strftime("%Y-%m-%d"))
+        prevMinute = current_time
     timeLabel.after(1000, timeFunc)
 
 #STUDENTLIST POPULATION
 def studentListPop(period_ID):
-    global sHeight
-    global sWidth
+    global sHeight, sWidth
     with db.cursor() as studentListCursor:
         #CLEAR THE STUDENTLIST FRAME
         studentList.configure(label_text=callMultiple(studentListCursor, "select name from periods where period_ID = %s", (period_ID,), True)[0])
@@ -317,7 +369,7 @@ ORDER BY sc.status ASC, sn.first_name ASC"""
                 studentFrame = ctk.CTkFrame(studentList, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
                 studentFrame.pack_propagate(0)
                 image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/" + img), size = size)
-                ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None else 'Absent'}", text_color='white', font=('Roboto', 15)).pack(side='left', padx=5,pady=2)
+                ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15)).pack(side='left', padx=5,pady=2)
                 ctk.CTkLabel(studentFrame, image= image, text='', fg_color='transparent').pack(padx=padx,pady=pady,side='right')
 
                 # Calculate row and column dynamically
@@ -1427,9 +1479,15 @@ class setupClass(ctk.CTkFrame):
                 absent_var = getFromSchedules("select absent_var from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
                 if late_var < absent_var:
                     if block:
-                        existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and daytype = %s and period_ID != %s", (schedule_ID, daytype, period_ID))
+                        if period_ID:
+                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and block_val = %s and period_ID != %s", (schedule_ID, daytype, period_ID))
+                        else:
+                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and block_val = %s", (schedule_ID, daytype))
                     else:
-                        existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and period_ID != %s", (schedule_ID, period_ID))
+                        if period_ID:
+                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and period_ID != %s", (schedule_ID, period_ID))
+                        else:
+                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s", (schedule_ID,))
                     for existing_start, existing_end in existing_periods:
                         if start_time < existing_end and end_time > existing_start and start_time != existing_end:
                             warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Timing Values!'
@@ -1710,7 +1768,7 @@ class historyFrameClass(ctk.CTkFrame):
                 name = firstLast[0] + " " + firstLast[1]
 
 
-                time_str = timeConvert(scan_time)
+                time_str = timeConvert(scan_time) if scan_time != -1 else ""
                 attendance = "Absent" if status == 0 else "Tardy" if status == 1 else "Present"
                 text_color = "red" if status == 0 else "orange" if status == 1 else "green"
                 display_text = f"{name}: {attendance}\n{getFromPeriods('select name from periods where period_ID = %s', (period_ID,), True)[0]}\n{time_str} on {scan_date}"
@@ -1783,10 +1841,13 @@ class settingsClass(ctk.CTkFrame):
         self.password_button.grid(row=1, column=0, pady=15)
 
         self.arrival_button = ctk.CTkButton(self.left_frame, text="Edit Schedules",height=50,font=('Space Grotesk',16,'bold'), command=self.edit_schedule)
-        self.arrival_button.grid(row=0, column=0, pady=(50, 10))
+        self.arrival_button.grid(row=0, column=0, pady=(20, 10))
 
         self.timeout_button = ctk.CTkButton(self.left_frame, text='Change Idle Timeout', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command=self.edit_timeout)
         self.timeout_button.grid(row=2, column=0, pady=15)
+
+        self.wifi_button = ctk.CTkButton(self.left_frame, text='Connect Wifi', height = 50, font = ('Space Grotesk', 16, 'bold'), command=lambda: display_popup(internetMenu))
+        self.wifi_button.grid(row=3, column=0, pady=15)
 
         self.dynamic_day_button = ctk.CTkButton(self.left_frame, text='Change Daytype\n(dynamic)', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command = lambda: display_popup(fridayperiodframe))
 
@@ -1839,7 +1900,7 @@ class settingsClass(ctk.CTkFrame):
 
     def toggle_dynamic_button(self, value):
         if value:
-            self.dynamic_day_button.grid(row=3, column=0, pady=15)
+            self.dynamic_day_button.grid(row=4, column=0, pady=15)
         else:
             self.dynamic_day_button.grid_forget()
 
@@ -2037,6 +2098,7 @@ class LoadingAnimation(ctk.CTkFrame):
 
     def stop_spinning(self):
         self.is_spinning = False
+
 
 
 #ALWAYS WIDGETS (top bar)-----------------------------------------------------
@@ -3025,7 +3087,9 @@ class warning_confirmation_class(ctk.CTkFrame):
                                           "restart check" : ["Restart System?", "*This will temporarily refresh the system (no data will be lost)*", "orange", lambda: teacherFrame.restart_script(), None],
                                           "matching name" : ["Invalid Name!", "note", "red", "command", "command"],
                                           "different name" : ["Warning!", "note", "orange", None, None],
-                                          "reset ID notice" : ["Notice!", "note", "orange", None, None]
+                                          "reset ID notice" : ["Notice!", "note", "orange", None, None],
+                                          "network success" : ["Network Connected!", "note", "green", None, None],
+                                          "network fail" : ["Network Connection Failed!", "note", "red", None, None]
                                           }
 
 
@@ -3174,6 +3238,83 @@ class timeoutMenuClass(ctk.CTkFrame):
         hide_popup(self)
 timeoutMenu = timeoutMenuClass(window)
 
+class editInternetClass(ctk.CTkFrame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.configure(width=(sWidth/2), height=(sHeight/2), border_color= 'white', border_width=4, bg_color='white')
+        self.grid_propagate(0)
+        self.pack_propagate(0)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight = 1)
+        self.rowconfigure(1, weight = 3)
+
+        #title
+        self.title_label = ctk.CTkLabel(self, text = "Connect To Wifi",font=('Space Grotesk', 25, 'bold'), text_color= "#1f6aa5")
+        self.title_label.grid(row=0, column=0, pady=(25, 5), sticky='n')
+
+        #SSID entry
+        self.name_entry = ctk.CTkEntry(self, placeholder_text="Network name (SSID)...",font=('Space Grotesk', 18), width = 300, height = 30)
+        self.name_entry.grid(row=1, column=0, pady=(10, 5), sticky='n')
+        self.name_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.name_entry))
+
+        #Password entry
+        self.password_entry = ctk.CTkEntry(self, placeholder_text = "Network password...",font=('Space Grotesk', 18), width = 300, height = 30)
+        self.password_entry.grid(row=1, column=0, pady=(50, 5), sticky='n')
+        self.password_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.password_entry))
+
+        #Input Error Label
+        self.error_label = ctk.CTkLabel(self, text="Need more inputs!", text_color='white', fg_color= 'red', font=('Space Grotesk', 18))
+
+        #Exit button
+        self.exit_button = ctk.CTkButton(self, text = "X",font=('Space Grotesk', 25, 'bold'), height = 70, width = 70, command = self.close_popup)
+        self.exit_button.place(relx = .85, rely=.03)
+
+        #Submit button
+        self.submit_button = ctk.CTkButton(self, text = "Submit",font=('Space Grotesk', 20, 'bold'), height = 50, width = 150, command = self.submit)
+        self.submit_button.grid(row=1, column=0, pady=(130, 5), sticky='n')
+
+    def set_current_entry(self, entry):
+        display_popup(keyboardFrame, .65)
+        keyboardFrame.set_target(entry)
+
+    def close_popup(self):
+        hide_popup(self)
+        self.name_entry.delete(0, 'end')
+        self.password_entry.delete(0, 'end')
+        self.error_label.grid_forget()
+
+    def submit(self):
+        hide_popup(self)
+        ssid = self.name_entry.get()
+        password = self.password_entry.get()
+
+        if ssid and password:
+            self.name_entry.delete(0, 'end')
+            self.password_entry.delete(0, 'end')
+            self.error_label.grid_forget()
+
+            wpa_supplicant_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
+
+            try:
+                # Use sudo to overwrite the wpa_supplicant.conf with necessary details
+                subprocess.run(['sudo', 'sh', '-c', f'echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > {wpa_supplicant_path}'], check=True)
+                subprocess.run(['sudo', 'sh', '-c', f'echo "update_config=1" >> {wpa_supplicant_path}'], check=True)
+                subprocess.run(['sudo', 'sh', '-c', f'echo "network={{\n\tssid=\"{ssid}\"\n\tpsk=\"{password}\"\n\tkey_mgmt=WPA2-PSK\n}}" >> {wpa_supplicant_path}'], check=True)
+
+                # Restart the networking service
+                subprocess.run(['sudo', 'systemctl', 'restart', 'dhcpcd'], check=True)
+
+                # Update success confirmation
+                warning_confirmation.warning_confirmation_dict["network success"][1] = f"Successfully connected to {ssid}!"
+                warning_confirmation.config("network success")
+
+            except subprocess.CalledProcessError as e:
+                # Handle any errors that occur during the process
+                warning_confirmation.warning_confirmation_dict["network fail"][1] = f"Failed to connect to {ssid}. Error: {e}"
+                warning_confirmation.config("network fail")
+        else:
+            self.error_label.grid(row=1, column = 0, pady = (90, 0), sticky = 'n')
+internetMenu = editInternetClass(window)
 
 #touch input detection
 window.bind_all("<Button-1>", reset_timeout)
