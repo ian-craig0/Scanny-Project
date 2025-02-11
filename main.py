@@ -20,6 +20,7 @@ from PiicoDev_Unified import sleep_ms
 import MySQLdb
 import mysql.connector
 import mysql.connector.pooling
+from contextlib import closing
 
 #TIMING IMPORTS
 import datetime
@@ -101,37 +102,37 @@ def callMultiple(cursor, query, params=None, fetchone=False, get=True, retries=4
 #MYSQL TABLE GETTER FUNCTIONS
 #BLOCK SCHEDULE GETTER
 def getFromSchedule_Days(query, params=None,fetchone=False,get=True):
-    with db.cursor() as schedule_days_curs:
+    with closing(db.cursor()) as schedule_days_curs:
         return callMultiple(schedule_days_curs, query, params, fetchone, get)
 
 #PERIODS GETTER
 def getFromPeriods(query, params=None,fetchone=False,get=True):
-    with db.cursor() as periods_curs:
+    with closing(db.cursor()) as periods_curs:
         return callMultiple(periods_curs, query, params, fetchone, get)
 
 #SCANS GETTER
 def getFromScans(query, params=None,fetchone=False,get=True):
-    with db.cursor() as scans_curs:
+    with closing(db.cursor()) as scans_curs:
         return callMultiple(scans_curs, query, params, fetchone, get)
 
 #SCHEDULES GETTER
 def getFromSchedules(query, params=None,fetchone=False,get=True):
-    with db.cursor() as schedules_curs:
+    with closing(db.cursor()) as schedules_curs:
         return callMultiple(schedules_curs, query, params, fetchone, get)
 
 #STUDENT NAMES GETTER
 def getFromStudent_Names(query, params=None,fetchone=False,get=True):
-    with db.cursor() as student_name_curs:
+    with closing(db.cursor()) as student_name_curs:
         return callMultiple(student_name_curs, query, params, fetchone, get)
 
 #STUDENT PERIODS GETTER
 def getFromStudent_Periods(query, params=None,fetchone=False,get=True):
-    with db.cursor() as student_period_curs:
+    with closing(db.cursor()) as student_period_curs:
         return callMultiple(student_period_curs, query, params, fetchone, get)
 
 #CONTROL GETTER
 def getFromSystem_Control(query, params=None,fetchone=False,get=True):
-    with db.cursor() as system_control_curs:
+    with closing(db.cursor()) as system_control_curs:
         return callMultiple(system_control_curs, query, params, fetchone, get)
 
 
@@ -260,7 +261,7 @@ def newDay():
 def time_to_minutes(timeStr):
     # Split the input string into hours and minutes
     hours, minutes = map(int, timeStr.split(":"))
-    # Convert the time to total minutes since mid6night
+    # Convert the time to total minutes since midnight
     total_minutes = hours * 60 + minutes
     return total_minutes
 
@@ -316,7 +317,7 @@ AND s.macID IS NULL;"""
         ending_per_ID = ending_period[0]
         absent_students = getFromScans(missing_student_query, (ending_per_ID, ending_per_ID))
         absent_scan_data = [(ending_per_ID, active_schedule_ID, macID[0], curr_date, -1, 0, None) for macID in absent_students]
-        with db.cursor() as absent_curs:
+        with closing(db.cursor()) as absent_curs:
             absent_curs.executemany("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", absent_scan_data)
 
 #TIME LOOP
@@ -342,7 +343,7 @@ def timeFunc():
 #STUDENTLIST POPULATION
 def studentListPop(period_ID):
     global sHeight, sWidth
-    with db.cursor() as studentListCursor:
+    with closing(db.cursor()) as studentListCursor:
         #CLEAR THE STUDENTLIST FRAME
         studentList.configure(label_text=callMultiple(studentListCursor, "select name from periods where period_ID = %s", (period_ID,), True)[0])
         for widget in studentList.winfo_children():
@@ -385,7 +386,7 @@ def periodListPop():
         widget.destroy()
     query = """SELECT p.period_ID FROM periods p WHERE p.schedule_ID = %s AND p.block_val = (SELECT sd.daytype FROM schedule_days sd WHERE sd.schedule_ID = %s AND sd.weekday = %s) ORDER BY p.start_time ASC"""
     schedule_ID = get_active_schedule_ID()
-    with db.cursor() as period_pop_curs:
+    with closing(db.cursor()) as period_pop_curs:
         periods = callMultiple(period_pop_curs, query, (schedule_ID, schedule_ID, date.today().weekday()))
         if periods:
             for period in periods:
@@ -403,7 +404,7 @@ def checkIN():
     global currentPopup, ten_after, current_time, currentTAB, reset_oldMACID
     while True:
         if ten_after == current_time:
-            with db.cursor() as alive_curs:
+            with closing(db.cursor()) as alive_curs:
                 # Execute a simple query to keep the connection alive
                 result = callMultiple(alive_curs, """SELECT active_schedule_ID FROM system_control""", None, True)
             ten_after = current_time + 10
@@ -1116,7 +1117,7 @@ class setupClass(ctk.CTkFrame):
         self.PI_LF_daytype_label.pack_forget()
         self.PI_LF_daytype_segmented_button.pack_forget()
         self.PI_LF_submit_button.pack_forget()
-        with db.cursor() as get_period_info_curs:
+        with closing(db.cursor()) as get_period_info_curs:
             if period_ID:
                 self.PI_LF_edit_students_button.pack(side='top', pady=10)
             if callMultiple(get_period_info_curs,"select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0] == 1: #IF ITS BLOCK SCHEDULE
@@ -1391,7 +1392,7 @@ class setupClass(ctk.CTkFrame):
         for key, value in self.SA_MSF_student_dict.items():
             if value.get():  # If checkbox is selected, check if already in the period
                 # Check if the student is already in the period
-                with db.cursor() as check_student_curs:
+                with closing(db.cursor()) as check_student_curs:
                     # If the student is not already assigned to the period, insert them
                     if callMultiple(check_student_curs, "SELECT COUNT(*) FROM student_periods WHERE macID = %s AND period_ID = %s", (key, period_ID), True)[0] == 0:
                         students_to_insert.append((key, period_ID))
@@ -1402,7 +1403,7 @@ class setupClass(ctk.CTkFrame):
 
         # Execute the bulk insert if there are students to insert
         if students_to_insert:
-            with db.cursor() as add_student_curs:
+            with closing(db.cursor()) as add_student_curs:
                 add_student_curs.executemany("INSERT INTO student_periods (macID, period_ID) VALUES (%s, %s)", tuple(students_to_insert))
 
         # Proceed with other operations
@@ -1411,7 +1412,7 @@ class setupClass(ctk.CTkFrame):
 
     def SA_remove_students(self, period_ID, name):
         log_list = []
-        with db.cursor() as remove_student_curs:
+        with closing(db.cursor()) as remove_student_curs:
             for key, value in self.SA_PSF_student_dict.items():
                 if value.get():
                     callMultiple(remove_student_curs, "delete from student_periods where macID = %s and period_ID = %s", (key, period_ID), False, False)
@@ -1548,7 +1549,7 @@ class setupClass(ctk.CTkFrame):
         if need_more_data: #PROMPT FOR MORE VALUES
             warning_confirmation.config('weekday input')
         else: #SUBMIT DATA
-            with db.cursor() as weekday_curs:
+            with closing(db.cursor()) as weekday_curs:
                 if edit: #WE ARE UPDATING
                     weekday_curs.executemany("update schedule_days set schedule_ID = %s, weekday = %s, dynamic_daytype = %s, daytype = %s where schedule_ID = %s and weekday = %s", (tuple(submit_list)))
                 else: #WE ARE INSERTING
@@ -1846,7 +1847,7 @@ class settingsClass(ctk.CTkFrame):
         self.timeout_button = ctk.CTkButton(self.left_frame, text='Change Idle Timeout', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command=self.edit_timeout)
         self.timeout_button.grid(row=2, column=0, pady=15)
 
-        self.wifi_button = ctk.CTkButton(self.left_frame, text='Connect Wifi', height = 50, font = ('Space Grotesk', 16, 'bold'), command=lambda: display_popup(internetMenu))
+        self.wifi_button = ctk.CTkButton(self.left_frame, text='Connect Wifi', height = 50, font = ('Space Grotesk', 16, 'bold'), command=lambda: tabSwap(7))
         self.wifi_button.grid(row=3, column=0, pady=15)
 
         self.dynamic_day_button = ctk.CTkButton(self.left_frame, text='Change Daytype\n(dynamic)', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command = lambda: display_popup(fridayperiodframe))
@@ -1956,7 +1957,7 @@ class settingsClass(ctk.CTkFrame):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
         if period_ID:
-            with db.cursor() as teacher_curs:
+            with closing(db.cursor()) as teacher_curs:
                 students = callMultiple(teacher_curs, """select sp.macID, sn.first_name, sn.last_name from student_periods sp join student_names sn on sp.macID = sn.macID where sp.period_ID = %s""", (period_ID,))
                 if students:
                     col = 0  # To track column placement
@@ -1994,13 +1995,13 @@ class settingsClass(ctk.CTkFrame):
 #AWAITING FRAME ADDON
 #STUDENT AWAITING IMAGE SPIN
 class LoadingAnimation(ctk.CTkFrame):
-    def __init__(self, parent, arc_diameter=500, rotation_speed=20):
+    def __init__(self, parent, color, arc_diameter=500, rotation_speed=20):
         super().__init__(parent)
-        self.configure(fg_color='#333333')  # Dark background
+        self.configure(fg_color=color)  # Dark background
 
         # Fixed canvas size
         self.canvas_size = 300
-        self.canvas = tk.Canvas(self, width=self.canvas_size, height=self.canvas_size, bg="#333333", highlightthickness=0)
+        self.canvas = tk.Canvas(self, width=self.canvas_size, height=self.canvas_size, bg=color, highlightthickness=0)
         self.canvas.pack(expand=True, padx=5, pady=5)
 
         # Initialize galaxy parameters
@@ -2101,6 +2102,7 @@ class LoadingAnimation(ctk.CTkFrame):
 
 
 
+
 #ALWAYS WIDGETS (top bar)-----------------------------------------------------
 #DATE AND TIME FRAME CREATION
 topBAR = ctk.CTkFrame(window,border_width=4,border_color='white')
@@ -2181,7 +2183,7 @@ awaitingFrame.rowconfigure(1, weight=2,minsize=sHeight*2/3)
 awaitingLabel = ctk.CTkLabel(awaitingFrame, text="Awaiting Scan...", font=('Space Grotesk', 40, 'bold'), text_color='white')
 awaitingLabel.grid(row=0, column=0,sticky="s",pady=40)
 awaitingFrame.grid(row=0,column=0,sticky='nsew')
-spinning_image = LoadingAnimation(awaitingFrame)
+spinning_image = LoadingAnimation(awaitingFrame, "#333333")
 spinning_image.place(relx=.5,rely=.6,anchor='center')
 
 
@@ -2258,6 +2260,7 @@ def timeout():
                 if currentPopup.winfo_ismapped(): #POTENTIAL FOR ERRORS
                     hide_popup(currentPopup)
             getStudentInfoFrame.close_popup()
+            internetMenu.close_popup()
             tabSwap(1)
             timeout_active = False  # Exit the loop when the timeout ends
 
@@ -2323,6 +2326,11 @@ def tabSwap(newTAB):
             getStudentInfoFrame.update_return(currentTAB)
             getStudentInfoFrame.place(x=0,y=0)
             getStudentInfoFrame.lift()
+            start_timeout()
+        elif newTAB == 7: #DISPLAY INTERNET MENU
+            spinning_image.stop_spinning()
+            internetMenu.place(x=0, y=0)
+            internetMenu.lift()
             start_timeout()
         currentTAB = newTAB
 
@@ -2625,6 +2633,161 @@ class StudentMenu(ctk.CTkFrame):
         self.update_periods()
         self.current_entry = None
 getStudentInfoFrame = StudentMenu(window)
+
+
+
+
+class editInternetClass(ctk.CTkFrame):
+    def __init__(self, master):
+        super().__init__(master)
+        self.configure(width=sWidth, height=sHeight,border_width=2,border_color='white',bg_color='white')
+        self.grid_propagate(0)
+        self.pack_propagate(0)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight = 1)
+        self.rowconfigure(1, weight = 3)
+
+        #title
+        self.title_label = ctk.CTkLabel(self, text = "Connect To Wifi",font=('Space Grotesk', 28, 'bold'), text_color= "#1f6aa5")
+        self.title_label.grid(row=0, column=0, pady=(40, 5), sticky='n')
+
+        #note
+        self.note_label = ctk.CTkLabel(self, text = "*Enter the name and password for the internet you would like to connect to.*",font=('Space Grotesk', 18), text_color= "white")
+        self.note_label.grid(row=0, column=0, pady=(75, 5), sticky='n')
+
+        #SSID entry
+        self.name_entry = ctk.CTkEntry(self, placeholder_text="Network name (SSID)...",font=('Space Grotesk', 18), width = 500, height = 60)
+        self.name_entry.grid(row=1, column=0, pady=(10, 5), sticky='n')
+        self.name_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.name_entry))
+
+        #Password entry
+        self.password_entry = ctk.CTkEntry(self, placeholder_text = "Network password...",font=('Space Grotesk', 18), width = 500, height = 60)
+        self.password_entry.grid(row=1, column=0, pady=(90, 5), sticky='n')
+        self.password_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.password_entry))
+
+        #Input Error Label
+        self.error_label = ctk.CTkLabel(self, text="Need more inputs!", text_color='white', fg_color= 'red', font=('Space Grotesk', 18))
+
+        #Exit button
+        self.exit_button = ctk.CTkButton(self, text = "X",font=('Space Grotesk', 25, 'bold'), height = 70, width = 70, command = self.close_popup)
+        self.exit_button.place(relx = .915, rely=.02)
+
+        #Submit button
+        self.submit_button = ctk.CTkButton(self, text = "Submit",font=('Space Grotesk', 20, 'bold'), height = 50, width = 220, command = self.submit)
+        self.submit_button.grid(row=1, column=0, pady=(190, 5), sticky='n')
+
+    def set_current_entry(self, entry):
+        display_popup(keyboardFrame, .65)
+        keyboardFrame.set_target(entry)
+
+    def close_popup(self):
+        tabSwap(4)
+        self.place_forget()
+        self.name_entry.delete(0, 'end')
+        self.password_entry.delete(0, 'end')
+        self.error_label.grid_forget()
+
+    def submit(self):
+        tabSwap(4)
+        self.place_forget()
+        ssid = self.name_entry.get()
+        password = self.password_entry.get()
+
+        if ssid and password:
+            self.name_entry.delete(0, 'end')
+            self.password_entry.delete(0, 'end')
+            self.error_label.grid_forget()
+
+            wpa_supplicant_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
+
+            try:
+                # Write a new configuration to wpa_supplicant.conf
+                subprocess.run(
+                    ['sudo', 'sh', '-c', f'echo "country=US" > {wpa_supplicant_path}'],
+                    check=True
+                )
+                # 2. Append the ctrl_interface line.
+                subprocess.run(
+                    ['sudo', 'sh', '-c', f'echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" >> {wpa_supplicant_path}'],
+                    check=True
+                )
+                # 3. Append the update_config line.
+                subprocess.run(
+                    ['sudo', 'sh', '-c', f'echo "update_config=1" >> {wpa_supplicant_path}'],
+                    check=True
+                )
+                # 4. Append an empty line.
+                subprocess.run(
+                    ['sudo', 'sh', '-c', f'echo "" >> {wpa_supplicant_path}'],
+                    check=True
+                )
+                # 5. Append the network block with key_mgmt.
+                subprocess.run(
+                    ['sudo', 'sh', '-c',
+                     f"printf 'network={{\\n\\tssid=\"{ssid}\"\\n\\tpsk=\"{password}\"\\n\\tkey_mgmt=WPA-PSK\\n}}\\n' >> {wpa_supplicant_path}"],
+                    check=True
+                )
+
+                # Restart the networking service to apply the new config
+                subprocess.run(['sudo', 'systemctl', 'restart', 'dhcpcd'], check=True)
+
+                loading_indicator.start_spinning()
+                display_popup(loading_indicator)
+
+                #LAUNCH NEW THREAD
+                thread = threading.Thread(target=self.check_connection_thread, args=(ssid,))
+                thread.daemon = True  # so it exits when the main program exits
+                thread.start()
+
+            except subprocess.CalledProcessError as e:
+                # Handle any errors that occur during the process
+                warning_confirmation.warning_confirmation_dict["network fail"][1] = (
+                    f"Failed to connect to {ssid}. Error: {e}"
+                )
+                warning_confirmation.config("network fail")
+        else:
+            self.error_label.grid(row=1, column=0, pady=(90, 0), sticky='n')
+
+    def check_connection_thread(self, ssid):
+        # Allow some time for the interface to associate with the new network.
+        # Then poll for the connection status.
+        connected = False
+        max_attempts = 8  # For a total wait of roughly 30 seconds (10 * 3 sec)
+        for attempt in range(max_attempts):
+            time.sleep(3)  # wait a few seconds between checks
+
+            # Check current connected SSID (using iwgetid)
+            ssid_result = subprocess.run(['iwgetid', '--raw'], capture_output=True, text=True)
+            current_ssid = ssid_result.stdout.strip()
+
+            # Check that we’re connected to the expected SSID
+            if current_ssid == ssid:
+                # Optionally, verify external connectivity by pinging an external server
+                ping_result = subprocess.run(
+                    ['ping', '-c', '1', '8.8.8.8'],  # Google DNS as an example
+                    capture_output=True, text=True
+                )
+                if ping_result.returncode == 0:
+                    connected = True
+                    break
+        self.after(0, self.finish_check_connection, ssid, connected)
+
+    def finish_check_connection(self, ssid, connected):
+        loading_indicator.stop_spinning()
+        hide_popup(loading_indicator)
+
+        if connected:
+            warning_confirmation.warning_confirmation_dict["network success"][1] = f"Successfully connected to {ssid}!"
+            warning_confirmation.config("network success")
+        else:
+            warning_confirmation.warning_confirmation_dict["network fail"][1] = (
+                f"Failed to establish a connection with {ssid}."
+            )
+            warning_confirmation.config("network fail")
+
+internetMenu = editInternetClass(window)
+
+
 
 #TEACHER PASSWORD
 class TeacherPasswordPopup(ctk.CTkFrame):
@@ -3238,83 +3401,31 @@ class timeoutMenuClass(ctk.CTkFrame):
         hide_popup(self)
 timeoutMenu = timeoutMenuClass(window)
 
-class editInternetClass(ctk.CTkFrame):
+class loadingIndicatorClass(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
-        self.configure(width=(sWidth/2), height=(sHeight/2), border_color= 'white', border_width=4, bg_color='white')
+        self.configure(width=(sWidth/2), height=(sHeight/1.75), border_color= 'white', border_width=4, bg_color='white')
         self.grid_propagate(0)
         self.pack_propagate(0)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight = 1)
-        self.rowconfigure(1, weight = 3)
+        self.rowconfigure(1, weight = 4)
 
         #title
-        self.title_label = ctk.CTkLabel(self, text = "Connect To Wifi",font=('Space Grotesk', 25, 'bold'), text_color= "#1f6aa5")
-        self.title_label.grid(row=0, column=0, pady=(25, 5), sticky='n')
+        self.title_label = ctk.CTkLabel(self, text = "Checking connection...",font=('Space Grotesk', 25, 'bold'), text_color= "#1f6aa5", wraplength=sWidth/2-16)
+        self.title_label.grid(row=0, column=0, pady=(10, 5), sticky='n')
 
-        #SSID entry
-        self.name_entry = ctk.CTkEntry(self, placeholder_text="Network name (SSID)...",font=('Space Grotesk', 18), width = 300, height = 30)
-        self.name_entry.grid(row=1, column=0, pady=(10, 5), sticky='n')
-        self.name_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.name_entry))
 
-        #Password entry
-        self.password_entry = ctk.CTkEntry(self, placeholder_text = "Network password...",font=('Space Grotesk', 18), width = 300, height = 30)
-        self.password_entry.grid(row=1, column=0, pady=(50, 5), sticky='n')
-        self.password_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.password_entry))
+        self.spinning_image2 = LoadingAnimation(self, "#2b2b2b")
+        self.spinning_image2.grid(row=1, column=0,sticky='n', pady=15)
 
-        #Input Error Label
-        self.error_label = ctk.CTkLabel(self, text="Need more inputs!", text_color='white', fg_color= 'red', font=('Space Grotesk', 18))
+    def start_spinning(self):
+        self.spinning_image2.start_spinning()
 
-        #Exit button
-        self.exit_button = ctk.CTkButton(self, text = "X",font=('Space Grotesk', 25, 'bold'), height = 70, width = 70, command = self.close_popup)
-        self.exit_button.place(relx = .85, rely=.03)
+    def stop_spinning(self):
+        self.spinning_image2.stop_spinning()
 
-        #Submit button
-        self.submit_button = ctk.CTkButton(self, text = "Submit",font=('Space Grotesk', 20, 'bold'), height = 50, width = 150, command = self.submit)
-        self.submit_button.grid(row=1, column=0, pady=(130, 5), sticky='n')
-
-    def set_current_entry(self, entry):
-        display_popup(keyboardFrame, .65)
-        keyboardFrame.set_target(entry)
-
-    def close_popup(self):
-        hide_popup(self)
-        self.name_entry.delete(0, 'end')
-        self.password_entry.delete(0, 'end')
-        self.error_label.grid_forget()
-
-    def submit(self):
-        hide_popup(self)
-        ssid = self.name_entry.get()
-        password = self.password_entry.get()
-
-        if ssid and password:
-            self.name_entry.delete(0, 'end')
-            self.password_entry.delete(0, 'end')
-            self.error_label.grid_forget()
-
-            wpa_supplicant_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
-
-            try:
-                # Use sudo to overwrite the wpa_supplicant.conf with necessary details
-                subprocess.run(['sudo', 'sh', '-c', f'echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > {wpa_supplicant_path}'], check=True)
-                subprocess.run(['sudo', 'sh', '-c', f'echo "update_config=1" >> {wpa_supplicant_path}'], check=True)
-                subprocess.run(['sudo', 'sh', '-c', f'echo "network={{\n\tssid=\"{ssid}\"\n\tpsk=\"{password}\"\n\tkey_mgmt=WPA2-PSK\n}}" >> {wpa_supplicant_path}'], check=True)
-
-                # Restart the networking service
-                subprocess.run(['sudo', 'systemctl', 'restart', 'dhcpcd'], check=True)
-
-                # Update success confirmation
-                warning_confirmation.warning_confirmation_dict["network success"][1] = f"Successfully connected to {ssid}!"
-                warning_confirmation.config("network success")
-
-            except subprocess.CalledProcessError as e:
-                # Handle any errors that occur during the process
-                warning_confirmation.warning_confirmation_dict["network fail"][1] = f"Failed to connect to {ssid}. Error: {e}"
-                warning_confirmation.config("network fail")
-        else:
-            self.error_label.grid(row=1, column = 0, pady = (90, 0), sticky = 'n')
-internetMenu = editInternetClass(window)
+loading_indicator = loadingIndicatorClass(window)
 
 #touch input detection
 window.bind_all("<Button-1>", reset_timeout)
