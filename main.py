@@ -2666,7 +2666,7 @@ class editInternetClass(ctk.CTkFrame):
         self.password_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.password_entry))
 
         #Input Error Label
-        self.error_label = ctk.CTkLabel(self, text="Need more inputs!", text_color='white', fg_color= 'red', font=('Space Grotesk', 18))
+        self.error_label = ctk.CTkLabel(self, text="Input a network name!", text_color='white', fg_color= 'red', font=('Space Grotesk', 18))
 
         #Exit button
         self.exit_button = ctk.CTkButton(self, text = "X",font=('Space Grotesk', 25, 'bold'), height = 70, width = 70, command = self.close_popup)
@@ -2693,7 +2693,7 @@ class editInternetClass(ctk.CTkFrame):
         ssid = self.name_entry.get()
         password = self.password_entry.get()
 
-        if ssid and password:
+        if ssid:
             self.name_entry.delete(0, 'end')
             self.password_entry.delete(0, 'end')
             self.error_label.grid_forget()
@@ -2722,11 +2722,18 @@ class editInternetClass(ctk.CTkFrame):
                     check=True
                 )
                 # 5. Append the network block with key_mgmt.
-                subprocess.run(
-                    ['sudo', 'sh', '-c',
-                     f"printf 'network={{\\n\\tssid=\"{ssid}\"\\n\\tpsk=\"{password}\"\\n\\tkey_mgmt=WPA-PSK\\n}}\\n' >> {wpa_supplicant_path}"],
-                    check=True
-                )
+                if password:
+                    subprocess.run(
+                        ['sudo', 'sh', '-c',
+                         f"printf 'network={{\\n\\tssid=\"{ssid}\"\\n\\tpsk=\"{password}\"\\n\\tkey_mgmt=WPA-PSK\\n}}\\n' >> {wpa_supplicant_path}"],
+                        check=True
+                    )
+                else:
+                    subprocess.run(
+                        ['sudo', 'sh', '-c',
+                         f"printf 'network={{\\n\\tssid=\"{ssid}\"\\n\\tkey_mgmt=NONE\\n}}\\n' >> {wpa_supplicant_path}"],
+                        check=True
+                    )
 
                 # Restart the networking service to apply the new config
                 subprocess.run(['sudo', 'systemctl', 'restart', 'dhcpcd'], check=True)
