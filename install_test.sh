@@ -4,13 +4,13 @@
 # imports a local database, copies your application files,
 # sets up a cron job, and configures display settings.
 
-# 1. Ensure the script is run as root
+# ensure user has sudo access
 if [ "$EUID" -ne 0 ]; then
-  echo "Please run this script as root. Use: sudo ./install.sh"
+  echo "Please run this script with sudo access. (run the command in the tutorial doc)"
   exit 1
 fi
 
-# 2. Check for Internet connectivity
+#check for internet connection
 echo "Checking internet connectivity..."
 if ! ping -c 1 google.com > /dev/null 2>&1; then
   echo "No internet connection detected. Please connect to the internet and try again."
@@ -19,5 +19,37 @@ fi
 
 echo "Internet connection confirmed. Proceeding with installation..."
 
+# update system packages
 echo "Updating system packages..."
 apt-get update
+echo "System packages updated successfully!"
+
+
+#installing system packages
+echo "Installing system packages..."
+apt-get install -y subversion
+echo "System packages installed successfully!"
+
+
+#installing python libraries
+#echo "Installing python libraries..."
+
+#echo "Python libraries installed successfully!"
+
+
+#start mysql server
+
+#import empty mysql database
+
+#download script from github
+echo "Creating directory for scanny..."
+mkdir -p /home/pi/Desktop/scanny
+echo "Directory created successfully!"
+
+echo "Downloading scanny from github..."
+svn export https://github.com/ian-craig0/Scanny-Project/main/scanny /home/pi/Desktop/scanny
+echo "Folder downloaded successfully!"
+
+#setup cron job for python script
+
+#invert display and touch inputs
