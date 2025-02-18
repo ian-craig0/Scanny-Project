@@ -43,11 +43,11 @@ echo "System packages installed successfully!"
 
 #download script from github
 echo "Creating directory for scanny..."
-mkdir -p ~/Desktop/scanny
+mkdir -p $HOME/Desktop/scanny
 echo "Directory created successfully!"
 
 echo "Downloading scanny from github..."
-svn export https://github.com/ian-craig0/Scanny-Project/main/scanny ~/Desktop/scanny
+svn export https://github.com/ian-craig0/Scanny-Project/main/scanny $HOME/Desktop/scanny
 echo "Folder downloaded successfully!"
 
 #setup cron job for python script
