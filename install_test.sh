@@ -47,7 +47,7 @@ mkdir -p /home/pi/Desktop/scanny
 echo "Directory created successfully!"
 
 echo "Downloading scanny from github..."
-svn export https://github.com/ian-craig0/Scanny-Project/trunk/scanny/images /home/pi/Desktop/scanny
+
 echo "Repository cloned successfully!"
 
 
