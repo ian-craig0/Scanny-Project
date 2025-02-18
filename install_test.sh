@@ -28,8 +28,8 @@ echo "System packages updated successfully!"
 
 #installing system packages
 echo "Installing system packages..."
+apt-get install -y subversion
 echo "System packages installed successfully!"
-
 
 #installing python libraries
 #echo "Installing python libraries..."
@@ -47,11 +47,7 @@ mkdir -p /home/pi/Desktop/scanny
 echo "Directory created successfully!"
 
 echo "Downloading scanny from github..."
-git clone --filter=blob:none --no-checkout https://github.com/ian-craig0/Scanny-Project.git /home/pi/Desktop/scanny
-cd /home/pi/Desktop/scanny
-
-git sparse-checkout init --cone
-git sparse-checkout set scanny
+svn export https://github.com/ian-craig0/Scanny-Project/trunk/scanny /home/pi/Desktop/scanny
 echo "Repository cloned successfully!"
 
 
