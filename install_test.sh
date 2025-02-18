@@ -22,6 +22,7 @@ echo "Internet connection confirmed. Proceeding with installation..."
 # update system packages
 echo "Updating system packages..."
 apt-get update
+apt-get upgrade -y
 echo "System packages updated successfully!"
 
 
