@@ -53,3 +53,4 @@ echo "Folder downloaded successfully!"
 #setup cron job for python script
 
 #invert display and touch inputs
+
