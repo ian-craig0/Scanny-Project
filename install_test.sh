@@ -30,7 +30,12 @@ apt-get install -y \
     libmariadb-dev \
     python3-venv \
     python3-pip \
-    mariadb-server
+    mariadb-server \
+    python3-dev \
+    libjpeg-dev \
+    libopenjp2-7 \
+    libtiff5 \
+    i2c-tools
 echo "System packages installed/updated successfully!"
 
 # Create virtual environment as pi user
@@ -42,24 +47,27 @@ fi
 
 # Install Python packages in venv
 echo "Installing Python libraries in virtual environment..."
-sudo -u pi "$VENV_PATH/bin/pip" install --upgrade pip
+sudo -u pi "$VENV_PATH/bin/pip" install --upgrade pip setuptools
 sudo -u pi "$VENV_PATH/bin/pip" install \
     customtkinter \
     mysql-connector-python \
     Pillow \
     mysqlclient \
-    "git+https://github.com/CoreElectronics/CE-PiicoDev-Unified.git" \
-    "git+https://github.com/CoreElectronics/CE-PiicoDev-RFID-Module.git"
+    "git+https://github.com/CoreElectronics/CE-PiicoDev-Python-Library.git" \
+    "git+https://github.com/CoreElectronics/CE-PiicoDev-RFID-Python.git"
 
-# Install PiicoDev dependencies
-sudo apt-get install -y i2c-tools  # Required for PiicoDev hardware communication
+# Enable hardware interfaces
+echo "Configuring hardware..."
+sudo raspi-config nonint do_i2c 0  # Enable I2C interface
 
 # Verify installations
 echo "Verifying dependencies..."
-if sudo -u pi "$VENV_PATH/bin/python" -c "import tkinter, customtkinter, PIL, piicodev, mysql.connector, MySQLdb"; then
+if sudo -u pi "$VENV_PATH/bin/python" -c "import tkinter, customtkinter, PIL, PiicoDev_RFID, mysql.connector, MySQLdb"; then
     echo "All dependencies verified successfully"
 else
-    echo "Error: Some dependencies failed to install" >&2
+    echo "Error: Verification failed - checking installed packages..."
+    echo "Installed packages:"
+    sudo -u pi "$VENV_PATH/bin/pip" list
     exit 1
 fi
 
