@@ -42,10 +42,13 @@ echo "System packages installed successfully!"
 #import empty mysql database
 
 #download script from github
-echo "Creating directory for scanny..."
-mkdir -p /home/pi/Desktop/scanny
-echo "Directory created successfully!"
+#echo "Creating directory for scanny..."
+#mkdir -p /home/pi/Desktop/scanny
 
+echo "Directory created successfully!"
+git clone https://github.com/ian-craig0/Scanny-Project.git
+cp -r Scanny-Project/scanny /home/pi/Desktop/
+rm -rf Scanny-Project
 echo "Downloading scanny from github..."
 
 echo "Repository cloned successfully!"
