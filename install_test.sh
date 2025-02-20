@@ -47,8 +47,12 @@ sudo -u pi "$VENV_PATH/bin/pip" install \
     customtkinter \
     mysql-connector-python \
     Pillow \
-    piicodev \
-    mysqlclient
+    mysqlclient \
+    "git+https://github.com/CoreElectronics/CE-PiicoDev-Unified.git" \
+    "git+https://github.com/CoreElectronics/CE-PiicoDev-RFID-Module.git"
+
+# Install PiicoDev dependencies
+sudo apt-get install -y i2c-tools  # Required for PiicoDev hardware communication
 
 # Verify installations
 echo "Verifying dependencies..."
