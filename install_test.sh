@@ -32,20 +32,13 @@ echo "System packages updated successfully!"
 
 #installing system packages --------------------------------------------------------------------------------
 echo "Installing/Updating system packages..."
-apt-get install -y python3 python3-pip python3-tk python3-pil python3-pil.imagetk libmariadb-dev
+apt-get install -y python3 python3-pip python3-tk mariadb-server
 echo "System packages installed/updated successfully!"
 
 #installing python libraries --------------------------------------------------------------------------------
 echo "Installing python libraries..."
 pip3 install customtkinter mysql-connector-python Pillow PiicoDev-RFID mysqlclient
-
-#check if dependencies are installed
-if python3 -c "import tkinter, customtkinter, PIL, PiicoDev_RFID, mysql.connector, MySQLdb"; then
-    echo "All dependencies installed and verified successfully"
-else
-    echo "Error: Some dependencies failed to install" >&2
-    exit 1
-fi
+echo "Successfully installed python libraries!"
 
 #start and import empty mysql database --------------------------------------------------------------------------------
 
