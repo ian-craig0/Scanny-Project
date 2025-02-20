@@ -40,19 +40,34 @@ echo "System packages updated successfully!"
 
 #import empty mysql database
 
-#download script from github
-#echo "Creating directory for scanny..."
-#mkdir -p /home/pi/Desktop/scanny
+#DOWNLOADING/UPDATING SCRIPT FROM GITHUB
+#git clone https://github.com/ian-craig0/Scanny-Project.git
+#cp -r Scanny-Project/scanny /home/pi/Desktop/
+#rm -rf Scanny-Project
+# GitHub repository and target directory
+REPO_URL="https://github.com/ian-craig0/Scanny-Project.git"
+REPO_DIR="Scanny-Project"  # Local clone directory
+TARGET_DIR="/home/pi/Desktop/scanny"  # Case-sensitive path!
 
-echo "Directory created successfully!"
-git clone https://github.com/ian-craig0/Scanny-Project.git
-cp -r Scanny-Project/scanny /home/pi/Desktop/
-rm -rf Scanny-Project
-echo "Downloading scanny from github..."
+# Clone or update the repository
+if [ -d "$REPO_DIR" ]; then
+  git -C "$REPO_DIR" pull
+else
+  git clone "$REPO_URL" "$REPO_DIR"
+fi
 
-echo "Repository cloned successfully!"
+# Update or create the target directory
+if [ -d "$TARGET_DIR" ]; then
+  echo "Updating existing scanny directory..."
+  rsync -a --delete "$REPO_DIR/scanny/" "$TARGET_DIR/"
+else
+  echo "Downloading new scanny directory..."
+  cp -r "$REPO_DIR/scanny" "$TARGET_DIR"
+fi
 
-
+# Fix permissions (since script runs with sudo)
+chown -R pi:pi "$TARGET_DIR"
+echo "Scanny contents downloaded/updated successfuly!"
 
 
 #setup cron job for python script
