@@ -27,9 +27,8 @@ echo "System packages updated successfully!"
 
 
 #installing system packages
-echo "Installing system packages..."
-apt-get install -y subversion
-echo "System packages installed successfully!"
+#echo "Installing system packages..."
+#echo "System packages installed successfully!"
 
 #installing python libraries
 #echo "Installing python libraries..."
