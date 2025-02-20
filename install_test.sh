@@ -47,12 +47,12 @@ sudo -u pi "$VENV_PATH/bin/pip" install \
     customtkinter \
     mysql-connector-python \
     Pillow \
-    PiicoDev-RFID \
+    piicodev \
     mysqlclient
 
 # Verify installations
 echo "Verifying dependencies..."
-if sudo -u pi "$VENV_PATH/bin/python" -c "import tkinter, customtkinter, PIL, PiicoDev_RFID, mysql.connector, MySQLdb"; then
+if sudo -u pi "$VENV_PATH/bin/python" -c "import tkinter, customtkinter, PIL, piicodev, mysql.connector, MySQLdb"; then
     echo "All dependencies verified successfully"
 else
     echo "Error: Some dependencies failed to install" >&2
