@@ -35,10 +35,39 @@ echo "Installing/Updating system packages..."
 apt-get install -y python3 python3-pip python3-tk mariadb-server
 echo "System packages installed/updated successfully!"
 
+VENV_PATH="/home/pi/scanny-venv"
+REQUIREMENTS=(
+    customtkinter
+    mysql-connector-python
+    Pillow
+    mysqlclient
+    piicodev
+)
+
+if [ ! -d "$VENV_PATH" ]; then
+    echo "Creating virtual environment..."
+    sudo -u pi python3 -m venv "$VENV_PATH"
+fi
+
+# Install/update packages
+echo "Checking dependencies..."
+sudo -u pi "$VENV_PATH/bin/pip" install --upgrade pip
+sudo -u pi "$VENV_PATH/bin/pip" install --quiet "${REQUIREMENTS[@]}"
+
+echo "Verifying installation..."
+sudo -u pi "$VENV_PATH/bin/python" -c "
+try:
+    import customtkinter, mysql.connector, PIL, PiicoDev_RFID
+    print('All dependencies verified successfully')
+except ImportError as e:
+    print(f'Error: {e}')
+    exit(1)
+"
+
 #installing python libraries --------------------------------------------------------------------------------
-echo "Installing python libraries..."
-pip3 install customtkinter mysql-connector-python Pillow PiicoDev-RFID mysqlclient
-echo "Successfully installed python libraries!"
+#echo "Installing python libraries..."
+#pip3 install customtkinter mysql-connector-python Pillow PiicoDev-RFID mysqlclient
+#echo "Successfully installed python libraries!"
 
 #start and import empty mysql database --------------------------------------------------------------------------------
 
