@@ -1,13 +1,18 @@
 #!/bin/bash
 # Installer for GUI App on Raspberry Pi with MySQL, Database Import, and Required Python Libraries
+# This script installs system packages, Python libraries, MySQL server,
+# imports a local database, copies your application files,
+# sets up a cron job, and configures display settings.
 
-# Ensure user has sudo access
+# ensure user has sudo access --------------------------------------------------------------------------------
 if [ "$EUID" -ne 0 ]; then
   echo "Please run this script with sudo access. (run the command in the tutorial doc)"
   exit 1
 fi
 
-# Check for internet connection
+
+
+#check for internet connection --------------------------------------------------------------------------------
 echo "Checking internet connectivity..."
 if ! ping -c 1 google.com > /dev/null 2>&1; then
   echo "No internet connection detected. Please connect to the internet and try again."
@@ -15,135 +20,106 @@ if ! ping -c 1 google.com > /dev/null 2>&1; then
 fi
 echo "Internet connection confirmed. Proceeding with installation..."
 
-# Update system packages
+
+
+# update system packages --------------------------------------------------------------------------------
 echo "Updating system packages..."
 apt-get update
 apt-get upgrade -y
 echo "System packages updated successfully!"
 
-# Install system dependencies
+
+
+#installing system packages --------------------------------------------------------------------------------
 echo "Installing/Updating system packages..."
-apt-get install -y \
-    python3-tk \
-    python3-pil \
-    python3-pil.imagetk \
-    libmariadb-dev \
-    python3-venv \
-    python3-pip \
-    mariadb-server \
-    python3-dev \
-    libjpeg-dev \
-    libopenjp2-7 \
-    libtiff5 \
-    i2c-tools \
-    libatlas-base-dev  # Required for numpy dependencies
+apt-get install -y python3 python3-pip python3-tk python3-pil python3-pil.imagetk libmariadb-dev
 echo "System packages installed/updated successfully!"
 
-# Create fresh virtual environment - FORCE CLEAN INSTALL
-VENV_PATH="/home/pi/scanny-venv"
-echo "Creating fresh Python virtual environment..."
-sudo rm -rf "$VENV_PATH"
-sudo -u pi python3 -m venv "$VENV_PATH"
+#installing python libraries --------------------------------------------------------------------------------
+echo "Installing python libraries..."
+pip3 install customtkinter mysql-connector-python Pillow PiicoDev-RFID mysqlclient
 
-# Install Python packages in venv - CORRECTED PACKAGES
-echo "Installing Python libraries in virtual environment..."
-sudo -u pi "$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
-sudo -u pi "$VENV_PATH/bin/pip" install \
-    customtkinter==5.2.2 \
-    mysql-connector-python==8.2.0 \
-    Pillow==10.3.0 \
-    mysqlclient==2.2.1 \
-    "git+https://github.com/CoreElectronics/CE-PiicoDev-Python-Library.git" \
-    "git+https://github.com/CoreElectronics/CE-PiicoDev-RFID-Python.git"
-
-# Enable I2C properly
-echo "Enabling hardware interfaces..."
-sudo raspi-config nonint do_i2c 0
-sudo usermod -aG i2c pi
-
-# Verify installations with better diagnostics
-echo "Verifying dependencies..."
-verify_command() {
-    sudo -u pi "$VENV_PATH/bin/python" -c "import $1"
-    return $?
-}
-
-modules=("tkinter" "customtkinter" "PIL" "PiicoDev_RFID" "mysql.connector" "MySQLdb")
-
-for module in "${modules[@]}"; do
-    if ! verify_command "$module"; then
-        echo "CRITICAL ERROR: Failed to import $module"
-        echo "Attempting to reinstall..."
-        case $module in
-            "customtkinter") sudo -u pi "$VENV_PATH/bin/pip" install --force-reinstall customtkinter==5.2.2 ;;
-            "PiicoDev_RFID") sudo -u pi "$VENV_PATH/bin/pip" install --force-reinstall "git+https://github.com/CoreElectronics/CE-PiicoDev-RFID-Python.git" ;;
-            *) sudo -u pi "$VENV_PATH/bin/pip" install --force-reinstall "$module" ;;
-        esac
-    fi
-done
-
-# Final verification
-if sudo -u pi "$VENV_PATH/bin/python" -c "import sys; from PiicoDev_RFID import PiicoDev_RFID; import customtkinter; print('All critical imports successful')"; then
-    echo "All dependencies verified successfully"
+#check if dependencies are installed
+if python3 -c "import tkinter, customtkinter, PIL, PiicoDev_RFID, mysql.connector, MySQLdb"; then
+    echo "All dependencies installed and verified successfully"
 else
-    echo "FATAL ERROR: Core dependencies missing"
-    echo "Installed packages:"
-    sudo -u pi "$VENV_PATH/bin/pip" list
+    echo "Error: Some dependencies failed to install" >&2
     exit 1
 fi
 
-# DOWNLOADING/UPDATING SCRIPT FROM GITHUB
-REPO_URL="https://github.com/ian-craig0/Scanny-Project.git"
-REPO_DIR="Scanny-Project"
-TARGET_DIR="/home/pi/Desktop/scanny"
+#start and import empty mysql database --------------------------------------------------------------------------------
 
-# Clone or update repository
+
+
+#DOWNLOADING/UPDATING SCRIPT FROM GITHUB --------------------------------------------------------------------------------
+# GitHub repository and target directory
+REPO_URL="https://github.com/ian-craig0/Scanny-Project.git"
+REPO_DIR="Scanny-Project"  # Local clone directory
+TARGET_DIR="/home/pi/Desktop/scanny"  # Case-sensitive path!
+
+# Clone or update the repository
 if [ -d "$REPO_DIR" ]; then
-    git -C "$REPO_DIR" pull
+  git -C "$REPO_DIR" pull
 else
-    git clone "$REPO_URL" "$REPO_DIR"
+  git clone "$REPO_URL" "$REPO_DIR"
 fi
 
-# Sync files
-echo "Updating application files..."
-rsync -a --delete "$REPO_DIR/scanny/" "$TARGET_DIR/"
+# Update or create the target directory
+if [ -d "$TARGET_DIR" ]; then
+  echo "Updating existing scanny directory..."
+  rsync -a --delete "$REPO_DIR/scanny/" "$TARGET_DIR/"
+else
+  echo "Downloading new scanny directory..."
+  cp -r "$REPO_DIR/scanny" "$TARGET_DIR"
+fi
+
+# Fix permissions (since script runs with sudo)
 chown -R pi:pi "$TARGET_DIR"
-echo "Scanny contents updated successfully!"
+echo "Scanny contents downloaded/updated successfuly!"
 
-# Setup cron job (example - modify as needed)
-#echo "Setting up cron job..."
-#CRON_CMD="@reboot /home/pi/scanny-venv/bin/python /home/pi/Desktop/scanny/main.py"
-#(crontab -u pi -l 2>/dev/null | grep -vF "$CRON_CMD"; echo "$CRON_CMD") | crontab -u pi -
-#echo "Cron job configured!"
 
-# Rotate display and touch inputs
+
+#setup cron job for python script --------------------------------------------------------------------------------
+
+#invert display and touch inputs --------------------------------------------------------------------------------
+# Function to rotate display
 rotate_display() {
     CONFIG_FILE="/boot/firmware/config.txt"
     SECTION_HEADER="[all]"
     ROTATE_SETTING="display_rotate=2"
 
+    # Backup original config
     sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak.$(date +%s)"
+
+    # Check if section exists
     if ! grep -q "^$SECTION_HEADER" "$CONFIG_FILE"; then
+        echo "Adding display rotation configuration..."
         echo -e "\n$SECTION_HEADER" | sudo tee -a "$CONFIG_FILE" >/dev/null
         echo "$ROTATE_SETTING" | sudo tee -a "$CONFIG_FILE" >/dev/null
     elif ! grep -q "^$ROTATE_SETTING" "$CONFIG_FILE"; then
+        echo "Updating display rotation configuration..."
         sudo sed -i "/^$SECTION_HEADER/a $ROTATE_SETTING" "$CONFIG_FILE"
     fi
 }
 
+# Function to rotate touch input
 rotate_touch() {
     XORG_CONF="/usr/share/X11/xorg.conf.d/40-libinput.conf"
     IDENTIFIER='Identifier "libinput tablet catchall"'
     TRANSFORM_OPTION='Option "TransformationMatrix" "-1 0 1 0 -1 1 0 0 1"'
 
+    # Backup original config
     sudo cp "$XORG_CONF" "${XORG_CONF}.bak.$(date +%s)"
+
+    # Check if transformation already exists
     if ! grep -q "$TRANSFORM_OPTION" "$XORG_CONF"; then
-        sudo sed -i "/$IDENTIFIER/,/EndSection/ { /EndSection/i \	$TRANSFORM_OPTION }" "$XORG_CONF"
+        echo "Adding touch rotation configuration..."
+        sudo sed -i "/$IDENTIFIER/,/EndSection/ {
+            /EndSection/i \	$TRANSFORM_OPTION
+        }" "$XORG_CONF"
     fi
 }
-
 rotate_display
 rotate_touch
-echo "Display configuration updated! A reboot is required for changes to take effect."
-
-echo "Installation complete! Please reboot your system."
+echo "Display and touch rotation configurations applied successfully!"
+echo "A reboot may be required for changes to take effect."
