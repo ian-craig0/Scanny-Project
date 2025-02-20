@@ -35,37 +35,58 @@ apt-get install -y \
     libjpeg-dev \
     libopenjp2-7 \
     libtiff5 \
-    i2c-tools
+    i2c-tools \
+    libatlas-base-dev  # Required for numpy dependencies
 echo "System packages installed/updated successfully!"
 
-# Create virtual environment as pi user
+# Create fresh virtual environment - FORCE CLEAN INSTALL
 VENV_PATH="/home/pi/scanny-venv"
-if [ ! -d "$VENV_PATH" ]; then
-    echo "Creating Python virtual environment..."
-    sudo -u pi python3 -m venv "$VENV_PATH"
-fi
+echo "Creating fresh Python virtual environment..."
+sudo rm -rf "$VENV_PATH"
+sudo -u pi python3 -m venv "$VENV_PATH"
 
-# Install Python packages in venv
+# Install Python packages in venv - CORRECTED PACKAGES
 echo "Installing Python libraries in virtual environment..."
-sudo -u pi "$VENV_PATH/bin/pip" install --upgrade pip setuptools
+sudo -u pi "$VENV_PATH/bin/pip" install --upgrade pip setuptools wheel
 sudo -u pi "$VENV_PATH/bin/pip" install \
-    customtkinter \
-    mysql-connector-python \
-    Pillow \
-    mysqlclient \
+    customtkinter==5.2.2 \
+    mysql-connector-python==8.2.0 \
+    Pillow==10.3.0 \
+    mysqlclient==2.2.1 \
     "git+https://github.com/CoreElectronics/CE-PiicoDev-Python-Library.git" \
     "git+https://github.com/CoreElectronics/CE-PiicoDev-RFID-Python.git"
 
-# Enable hardware interfaces
-echo "Configuring hardware..."
-sudo raspi-config nonint do_i2c 0  # Enable I2C interface
+# Enable I2C properly
+echo "Enabling hardware interfaces..."
+sudo raspi-config nonint do_i2c 0
+sudo usermod -aG i2c pi
 
-# Verify installations
+# Verify installations with better diagnostics
 echo "Verifying dependencies..."
-if sudo -u pi "$VENV_PATH/bin/python" -c "import tkinter, customtkinter, PIL, PiicoDev_RFID, mysql.connector, MySQLdb"; then
+verify_command() {
+    sudo -u pi "$VENV_PATH/bin/python" -c "import $1"
+    return $?
+}
+
+modules=("tkinter" "customtkinter" "PIL" "PiicoDev_RFID" "mysql.connector" "MySQLdb")
+
+for module in "${modules[@]}"; do
+    if ! verify_command "$module"; then
+        echo "CRITICAL ERROR: Failed to import $module"
+        echo "Attempting to reinstall..."
+        case $module in
+            "customtkinter") sudo -u pi "$VENV_PATH/bin/pip" install --force-reinstall customtkinter==5.2.2 ;;
+            "PiicoDev_RFID") sudo -u pi "$VENV_PATH/bin/pip" install --force-reinstall "git+https://github.com/CoreElectronics/CE-PiicoDev-RFID-Python.git" ;;
+            *) sudo -u pi "$VENV_PATH/bin/pip" install --force-reinstall "$module" ;;
+        esac
+    fi
+done
+
+# Final verification
+if sudo -u pi "$VENV_PATH/bin/python" -c "import sys; from PiicoDev_RFID import PiicoDev_RFID; import customtkinter; print('All critical imports successful')"; then
     echo "All dependencies verified successfully"
 else
-    echo "Error: Verification failed - checking installed packages..."
+    echo "FATAL ERROR: Core dependencies missing"
     echo "Installed packages:"
     sudo -u pi "$VENV_PATH/bin/pip" list
     exit 1
