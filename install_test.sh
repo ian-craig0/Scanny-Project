@@ -148,8 +148,8 @@ echo "Successfully logged in/created MySQL user!"
 
 # Update credentials in python code
 sudo sed -i -E \
-  -e "s/(user\s*=\s*['\"]).*?(['\"])/\1$new_user\2/g" \
-  -e "s/(passwd\s*=\s*['\"]).*?(['\"])/\1$escaped_pass\2/g" \
+  -e "s/(user\s*=\s*['\"])[^'\"]*(['\"])/\1$new_user\2/g" \
+  -e "s/(passwd\s*=\s*['\"])[^'\"]*(['\"])/\1$escaped_pass\2/g" \
   "/home/pi/Desktop/scanny/main.py"
 
 
