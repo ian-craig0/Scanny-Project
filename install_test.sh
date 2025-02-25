@@ -150,7 +150,7 @@ echo "Successfully logged in/created MySQL user!"
 sudo sed -i -E \
   -e "s/(user\s*=\s*['\"]).*?(['\"])/\1$new_user\2/g" \
   -e "s/(passwd\s*=\s*['\"]).*?(['\"])/\1$escaped_pass\2/g" \
-  "/home/pi/Desktop/main.py"
+  "/home/pi/Desktop/scanny/main.py"
 
 
 
