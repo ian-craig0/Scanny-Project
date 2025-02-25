@@ -2,7 +2,7 @@
 # Installer for GUI App on Raspberry Pi with MySQL, Database Import, and Required Python Libraries
 # This script installs system packages, Python libraries, MySQL server,
 # imports a local database, copies your application files,
-# sets up a cron job, and configures display settings.
+# sets up a systemd service, and configures display settings.
 
 # ensure user has sudo access --------------------------------------------------------------------------------
 if [ "$EUID" -ne 0 ]; then
@@ -35,6 +35,10 @@ echo "Installing/Updating system packages..."
 apt-get install -y python3 python3-pip python3-tk mariadb-server
 echo "System packages installed/updated successfully!"
 
+
+
+#installing python libraries --------------------------------------------------------------------------------
+echo "Installing python libraries..."
 VENV_PATH="/home/pi/scanny-venv"
 REQUIREMENTS=(
     customtkinter
@@ -64,10 +68,6 @@ except ImportError as e:
     exit(1)
 "
 
-#installing python libraries --------------------------------------------------------------------------------
-#echo "Installing python libraries..."
-#pip3 install customtkinter mysql-connector-python Pillow PiicoDev-RFID mysqlclient
-#echo "Successfully installed python libraries!"
 
 #start and import empty mysql database --------------------------------------------------------------------------------
 
@@ -100,8 +100,31 @@ chown -R pi:pi "$TARGET_DIR"
 echo "Scanny contents downloaded/updated successfuly!"
 
 
+#setup systemd service for python script --------------------------------------------------------------------------------
+echo "Creating systemd service file to enable kiosk mode..."
+sudo tee /etc/systemd/system/kiosk.service > /dev/null << 'EOF'
+[Unit]
+Description=Kiosk Python Script in Virtual Environment
+After=network.target
 
-#setup cron job for python script --------------------------------------------------------------------------------
+[Service]
+User=pi
+WorkingDirectory=/home/pi/Desktop/scanny
+ExecStart=/home/pi/scanny-venv/bin/python /home/pi/Desktop/scanny/main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "Kiosk mode service successfully created!"
+
+#enabling service
+sudo systemctl daemon-reload
+sudo systemctl enable kiosk.service
+sudo systemctl start kiosk.service
+echo "Kiosk mode successfully enabled!"
 
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Function to rotate display
