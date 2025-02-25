@@ -19,6 +19,7 @@ if ! ping -c 1 google.com > /dev/null 2>&1; then
   exit 1
 fi
 echo "Internet connection confirmed. Proceeding with installation..."
+echo ""
 
 
 
@@ -27,6 +28,7 @@ echo "Updating system packages..."
 apt-get update
 apt-get upgrade -y
 echo "System packages updated successfully!"
+echo ""
 
 
 
@@ -34,7 +36,7 @@ echo "System packages updated successfully!"
 echo "Installing/Updating system packages..."
 apt-get install -y python3 python3-pip python3-tk mariadb-server
 echo "System packages installed/updated successfully!"
-
+echo ""
 
 
 #installing python libraries --------------------------------------------------------------------------------
@@ -67,7 +69,7 @@ except ImportError as e:
     print(f'Error: {e}')
     exit(1)
 "
-
+echo ""
 
 #DOWNLOADING/UPDATING SCRIPT FROM GITHUB --------------------------------------------------------------------------------
 # GitHub repository and target directory
@@ -94,7 +96,7 @@ fi
 # Fix permissions (since script runs with sudo)
 chown -R pi:pi "$TARGET_DIR"
 echo "Scanny contents downloaded/updated successfuly!"
-
+echo ""
 
 #setup systemd service for python script --------------------------------------------------------------------------------
 echo "Creating systemd service file to enable kiosk mode..."
@@ -115,14 +117,7 @@ WantedBy=multi-user.target
 EOF
 
 echo "Kiosk mode service successfully created!"
-
-#enabling service
-sudo systemctl daemon-reload
-sudo systemctl enable kiosk.service
-sudo systemctl start kiosk.service
-echo "Kiosk mode successfully enabled!"
-
-
+echo ""
 
 #setup and import empty mysql database --------------------------------------------------------------------------------
 echo "Starting MySQL Database Setup"
@@ -151,7 +146,7 @@ sudo sed -i -E \
   -e "s/(user\s*=\s*['\"])[^'\"]*(['\"])/\1$new_user\2/g" \
   -e "s/(passwd\s*=\s*['\"])[^'\"]*(['\"])/\1$escaped_pass\2/g" \
   "/home/pi/Desktop/scanny/main.py"
-
+echo ""
 
 
 #create update service with username and login to update python script ---------------------------------------------------
@@ -199,4 +194,13 @@ rotate_touch() {
 rotate_display
 rotate_touch
 echo "Display and touch rotation configurations applied successfully!"
+echo ""
+
+#enabling service for python script
+sudo systemctl daemon-reload
+sudo systemctl enable kiosk.service
+sudo systemctl start kiosk.service
+echo "Kiosk mode successfully enabled!"
+echo ""
+
 echo "A reboot may be required for changes to take effect."
