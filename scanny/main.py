@@ -60,13 +60,7 @@ def reconnect():
     print("reconnected!")
     global db
     try:
-        db = MySQLdb.connect(
-            host='localhost',
-            user='root',
-            passwd='seaside',
-            db='scanner',
-            autocommit=True
-        )
+        db = MySQLdb.connect(host='localhost',user='root',passwd='seaside',db='scanner',autocommit=True)
     except MySQLdb.OperationalError as err:
         db = None  # Clear the db variable to indicate failed reconnection
 
