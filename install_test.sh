@@ -154,6 +154,10 @@ sudo sed -i -E \
 
 
 
+#create update service with username and login to update python script ---------------------------------------------------
+
+
+
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Function to rotate display
 rotate_display() {
