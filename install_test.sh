@@ -69,10 +69,6 @@ except ImportError as e:
 "
 
 
-#start and import empty mysql database --------------------------------------------------------------------------------
-
-
-
 #DOWNLOADING/UPDATING SCRIPT FROM GITHUB --------------------------------------------------------------------------------
 # GitHub repository and target directory
 REPO_URL="https://github.com/ian-craig0/Scanny-Project.git"
@@ -125,6 +121,38 @@ sudo systemctl daemon-reload
 sudo systemctl enable kiosk.service
 sudo systemctl start kiosk.service
 echo "Kiosk mode successfully enabled!"
+
+
+
+#setup and import empty mysql database --------------------------------------------------------------------------------
+echo "Starting MySQL Database Setup"
+echo "Create new MySQL user or login to previous one:"
+read -p "Enter MySQL username: " new_user
+read -sp "Enter MySQL password: " new_pass
+echo ""
+
+# Escape password for sed
+escaped_pass=$(sed "s/'/'\\\\''/g" <<< "$new_pass")
+
+# MySQL with error checking
+if ! sudo mysql -u root <<EOF ; then
+CREATE USER IF NOT EXISTS '$new_user'@'localhost' IDENTIFIED BY '$new_pass';
+GRANT USAGE ON *.* TO '$new_user'@'localhost';
+GRANT ALL PRIVILEGES ON \`${new_user}_%\`.* TO '$new_user'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+  echo "MySQL user creation failed!" >&2
+  exit 1
+fi
+echo "Successfully logged in/created MySQL user!"
+
+# Update credentials in python code
+sudo sed -i -E \
+  -e "s/(user\s*=\s*['\"]).*?(['\"])/\1$new_user\2/g" \
+  -e "s/(passwd\s*=\s*['\"]).*?(['\"])/\1$escaped_pass\2/g" \
+  "/home/pi/Desktop/main.py"
+
+
 
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Function to rotate display
