@@ -128,7 +128,7 @@ echo "Kiosk mode successfully enabled!"
 echo "Starting MySQL Database Setup"
 echo "Create new MySQL user or login to previous one:"
 read -p "Enter MySQL username: " new_user </dev/tty
-read -s -p "Enter MySQL password: " new_pass </dev/tty
+read -p "Enter MySQL password: " new_pass </dev/tty
 echo ""
 
 # Escape password for sed
