@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # Installer for GUI App on Raspberry Pi with MySQL, Database Import, and Required Python Libraries
 # This script installs system packages, Python libraries, MySQL server,
@@ -70,6 +71,35 @@ except ImportError as e:
     exit(1)
 "
 echo ""
+
+# Install Space Grotesk font only if not already installed ----------------------------------------------
+FONT_DIR="/usr/local/share/fonts/space-grotesk"
+FONT_REGULAR="$FONT_DIR/SpaceGrotesk-Regular.ttf"
+FONT_URL="https://github.com/google/fonts/raw/main/ofl/spacegrotesk"
+
+# Check if font is already installed
+if ! sudo test -f "$FONT_REGULAR"; then
+    echo "Installing Space Grotesk font..."
+    
+    # Create font directory
+    sudo mkdir -p "$FONT_DIR"
+    
+    # Download all font variants
+    sudo wget -q --show-progress -P "$FONT_DIR" \
+      "$FONT_URL/SpaceGrotesk-Light.ttf" \
+      "$FONT_URL/SpaceGrotesk-Regular.ttf" \
+      "$FONT_URL/SpaceGrotesk-Medium.ttf" \
+      "$FONT_URL/SpaceGrotesk-SemiBold.ttf" \
+      "$FONT_URL/SpaceGrotesk-Bold.ttf"
+    
+    # Update font cache
+    sudo fc-cache -f -v
+    echo "Font installed successfully!"
+else
+    echo "Space Grotesk font already installed. Skipping."
+fi
+
+
 
 #DOWNLOADING/UPDATING SCRIPT FROM GITHUB --------------------------------------------------------------------------------
 # GitHub repository and target directory
