@@ -46,6 +46,10 @@ ctk.set_appearance_mode("Dark")
 sWidth = window.winfo_screenwidth()
 sHeight = window.winfo_screenheight()
 
+#GET SCRIPT DIRECTORY
+script_directory = os.path.dirname(os.path.abspath(__file__))
+print(script_directory)
+
 #CHECK IN ----------
 #RFID SCANNING
 rfid = PiicoDev_RFID()
