@@ -118,6 +118,8 @@ WorkingDirectory=/home/pi/Desktop/scanny
 ExecStart=/home/pi/scanny-venv/bin/python /home/pi/Desktop/scanny/main.py
 Restart=always
 RestartSec=5
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
 
 [Install]
 WantedBy=multi-user.target
