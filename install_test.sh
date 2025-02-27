@@ -171,6 +171,7 @@ if [ "$DB_EXISTS2" == "$DATABASE" ]; then
     echo "Database '$DATABASE' successfully created!"
 else
     echo "Database importing failed...
+fi
 echo""
 
 
