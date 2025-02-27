@@ -73,9 +73,7 @@ except ImportError as e:
 echo ""
 
 # Install Space Grotesk font only if not already installed ----------------------------------------------
-FONT_URL="https://github.com/floriankarsten/space-grotesk/raw/master/fonts/ttf/SpaceGrotesk%5Bwght%5D.ttf"
-FONT_DIR="$HOME/.fonts"
-FONT_FILE="$FONT_DIR/SpaceGrotesk[wght].ttf"
+FONT_DIR="/home/pi/.fonts"
 
 # Create the .fonts directory if it doesn't exist
 if [ ! -d "$FONT_DIR" ]; then
@@ -86,7 +84,7 @@ fi
 # Download the font if it's not already present
 if [ ! -f "$FONT_FILE" ]; then
     echo "Downloading Space Grotesk font..."
-    wget -O "$FONT_FILE" "$FONT_URL"
+    wget -O "/home/pi/.fonts/Space_Grotesk.ttf" "https://github.com/floriankarsten/space-grotesk/raw/master/fonts/ttf/SpaceGrotesk%5Bwght%5D.ttf"
 else
     echo "Font is already installed."
 fi
