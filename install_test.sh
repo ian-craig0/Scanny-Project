@@ -74,7 +74,7 @@ echo ""
 
 # Install Space Grotesk font only if not already installed ----------------------------------------------
 FONT_DIR="/usr/local/share/fonts/space-grotesk"
-FONT_REGULAR="$FONT_DIR/SpaceGrotesk-Regular.ttf"
+FONT_REGULAR="$FONT_DIR/SpaceGrotesk[wght].ttf"
 FONT_URL="https://github.com/google/fonts/raw/main/ofl/spacegrotesk"
 
 # Check if font is already installed
@@ -86,11 +86,8 @@ if ! sudo test -f "$FONT_REGULAR"; then
     
     # Download all font variants
     sudo wget -q --show-progress -P "$FONT_DIR" \
-      "$FONT_URL/SpaceGrotesk-Light.ttf" \
-      "$FONT_URL/SpaceGrotesk-Regular.ttf" \
-      "$FONT_URL/SpaceGrotesk-Medium.ttf" \
-      "$FONT_URL/SpaceGrotesk-SemiBold.ttf" \
-      "$FONT_URL/SpaceGrotesk-Bold.ttf"
+      "$FONT_URL/SpaceGrotesk[wght].ttf" \
+      
     
     # Update font cache
     sudo fc-cache -f -v
