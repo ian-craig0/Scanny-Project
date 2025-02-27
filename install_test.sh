@@ -133,7 +133,7 @@ escaped_pass=$(sed "s/'/'\\\\''/g" <<< "$new_pass")
 if ! sudo mysql -u root <<EOF ; then
 CREATE USER IF NOT EXISTS '$new_user'@'localhost' IDENTIFIED BY '$new_pass';
 GRANT USAGE ON *.* TO '$new_user'@'localhost';
-GRANT ALL PRIVILEGES ON \`${new_user}_%\`.* TO '$new_user'@'localhost';
+GRANT ALL PRIVILEGES ON *.* TO '$new_user'@'localhost';
 FLUSH PRIVILEGES;
 EOF
   echo "MySQL user creation failed!" >&2
