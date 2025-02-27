@@ -169,7 +169,7 @@ fi
 
 DB_EXISTS2=$(mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" -s -N -e "SHOW DATABASES LIKE '$DATABASE';")
 if [ "$DB_EXISTS2" == "$DATABASE" ]; then
-    echo "Database '$DATABASE' successfully created!"
+    echo "Database '$DATABASE' created/already exists!"
 else
     echo "Database importing failed..."
     exit 1
