@@ -149,6 +149,32 @@ sudo sed -i -E \
 echo ""
 
 
+#MySQL Database Importing
+MYSQL_USER=$new_user
+MYSQL_PASS=$new_pass
+DATABASE="scanner"
+SQL_URL="https://raw.githubusercontent.com/ian-craig0/Scanny-Project/main/scanny-db.sql"
+
+# Check if the database exists
+DB_EXISTS=$(mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" -s -N -e "SHOW DATABASES LIKE '$DATABASE';")
+
+if [ "$DB_EXISTS" == "$DATABASE" ]; then
+    echo "Database '$DATABASE' already exists. Skipping import."
+else
+    echo "Database '$DATABASE' does not exist. Importing SQL file from GitHub..."
+    # Import the SQL file directly from GitHub using curl
+    curl -s "$SQL_URL" | mysql -u "$MYSQL_USER" -p"$MYSQL_PASS"
+fi
+
+DB_EXISTS2=$(mysql -u "$MYSQL_USER" -p"$MYSQL_PASS" -s -N -e "SHOW DATABASES LIKE '$DATABASE';")
+if [ "$DB_EXISTS2" == "$DATABASE" ]; then
+    echo "Database '$DATABASE' successfully created!"
+else
+    echo "Database importing failed...
+echo""
+
+
+
 #create update service with username and login to update python script ---------------------------------------------------
 
 
