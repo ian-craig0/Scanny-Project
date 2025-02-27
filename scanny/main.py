@@ -48,7 +48,6 @@ sHeight = window.winfo_screenheight()
 
 #GET SCRIPT DIRECTORY
 script_directory = os.path.dirname(os.path.abspath(__file__))
-print(script_directory)
 
 #CHECK IN ----------
 #RFID SCANNING
@@ -367,7 +366,7 @@ ORDER BY sc.status ASC, sn.first_name ASC"""
 
                 studentFrame = ctk.CTkFrame(studentList, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
                 studentFrame.pack_propagate(0)
-                image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/" + img), size = size)
+                image = ctk.CTkImage(light_image=Image.open(script_directory + r"/images/" + img), size = size)
                 ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15)).pack(side='left', padx=5,pady=2)
                 ctk.CTkLabel(studentFrame, image= image, text='', fg_color='transparent').pack(padx=padx,pady=pady,side='right')
 
@@ -527,8 +526,8 @@ class setupClass(ctk.CTkFrame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
-        self.deleteImage = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/deleteIcon.png"),size=(50,50))
-        self.back_button_image = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/back_button.png"), size = (50, 50))
+        self.deleteImage = ctk.CTkImage(light_image=Image.open(script_directory+ r"/images/deleteIcon.png"),size=(50,50))
+        self.back_button_image = ctk.CTkImage(Image.open(script_directory + r"/images/back_button.png"), size = (50, 50))
 
 
         self.current_tab = -1
@@ -928,12 +927,12 @@ class setupClass(ctk.CTkFrame):
         self.CF_hidden_visibility_width = self.control_frame_width*.3125
         self.CF_visible = False
 
-        self.left_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/left.png"), size=(50,50))
-        self.right_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/right.png"), size=(50,50))
+        self.left_image = ctk.CTkImage(light_image=Image.open(script_directory+r"/images/left.png"), size=(50,50))
+        self.right_image = ctk.CTkImage(light_image=Image.open(script_directory+r"/images/right.png"), size=(50,50))
 
-        self.add_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/add.png"), size=(45,45))
-        self.manage_schedules = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/manage_schedules.png"), size=(45,45))
-        self.weekday_image = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/weekday.png"), size=(45,53))
+        self.add_image = ctk.CTkImage(light_image=Image.open(script_directory+r"/images/add.png"), size=(45,45))
+        self.manage_schedules = ctk.CTkImage(light_image=Image.open(script_directory+r"/images/manage_schedules.png"), size=(45,45))
+        self.weekday_image = ctk.CTkImage(light_image=Image.open(script_directory+r"/images/weekday.png"), size=(45,53))
 
         #CONTROL FRAME
         self.control_frame = ctk.CTkFrame(self, width = self.control_frame_width, height=sHeight)
@@ -2130,17 +2129,17 @@ rightBAR.rowconfigure(0, weight=1)
 rightBAR.grid(row=0,column=1,sticky='nsew')
 
 #MENU BUTTON CREATION
-homeImage = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/homeImage.png"),size=(32,32))
+homeImage = ctk.CTkImage(Image.open(script_directory+r"/images/homeImage.png"),size=(32,32))
 menuButton = ctk.CTkButton(rightBAR, text='Home',hover_color="#1f6aa5",image = homeImage,compound='left',font=('Space Grotesk', 25, 'bold'), height = 45,text_color='white',command=lambda: tabSwap(1))
 menuButton.grid(row=0,column=0,pady=10)
 
 #HISTORY BUTTON CREATION
-historyImage = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/historyImage.png"),size=(34,32))
+historyImage = ctk.CTkImage(Image.open(script_directory+r"/images/historyImage.png"),size=(34,32))
 historyButton = ctk.CTkButton(rightBAR, text='History',hover_color="#1f6aa5",image = historyImage, compound='left',font=('Space Grotesk', 25, 'bold'), height = 45,text_color='white',command=lambda: historySettingButtons(3,1))
 historyButton.grid(row=0,column=1,pady=10)
 
 #TEACHER MODE BUTTON
-settingsImage = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/settingsImage.png"),size=(32,32))
+settingsImage = ctk.CTkImage(Image.open(script_directory+r"/images/settingsImage.png"),size=(32,32))
 teacherButton = ctk.CTkButton(rightBAR, text='Settings',image=settingsImage,compound='left',hover_color="#1f6aa5",font=('Space Grotesk', 25, 'bold'), height = 45,text_color='white', command= lambda: historySettingButtons(4,2))
 teacherButton.grid(row=0,column=2,pady=10)
 
@@ -2216,17 +2215,17 @@ successLabel2.grid(row=0, column=0, pady = (20,5), sticky = 's')
 successFrame.grid(row=0,column=0,sticky='nsew')
 
 #PRESENT IMAGE
-successCheckExitImage = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/successCheckExitButtonImage.png"),size=(int(sWidth/6),int(sWidth/6)))
+successCheckExitImage = ctk.CTkImage(Image.open(script_directory+ r"/images/successCheckExitButtonImage.png"),size=(int(sWidth/6),int(sWidth/6)))
 imgSuccessLabel = ctk.CTkButton(successFrame, text='',image=successCheckExitImage, fg_color='#333333',border_color='#333333',state='disabled')
 imgSuccessLabel.grid(row=1, column=0, pady=30, sticky='n')
 
 #TARDY IMAGE
-success_Tardy_CheckExitImage = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/success_Tardy_CheckExitButtonImage.png"),size=(int(sWidth/6),int(sWidth/6)))
+success_Tardy_CheckExitImage = ctk.CTkImage(Image.open(script_directory+r"/images/success_Tardy_CheckExitButtonImage.png"),size=(int(sWidth/6),int(sWidth/6)))
 imgSuccess_Tardy_Label = ctk.CTkButton(successFrame, text='',image=success_Tardy_CheckExitImage, fg_color='#333333',border_color='#333333',state='disabled')
 imgSuccess_Tardy_Label.grid(row=1, column=0, pady=30, sticky='n')
 
 #LATE IMAGE
-success_Late_CheckExitImage = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/arrivalTimeWarningExitButtonImage.png"),size=(int(sWidth/6),int(sWidth/6)))
+success_Late_CheckExitImage = ctk.CTkImage(Image.open(script_directory+r"/images/arrivalTimeWarningExitButtonImage.png"),size=(int(sWidth/6),int(sWidth/6)))
 imgSuccess_Late_Label = ctk.CTkButton(successFrame, text='', image=success_Late_CheckExitImage, fg_color='#333333',border_color='#333333',state='disabled')
 imgSuccess_Late_Label.grid(row=1, column=0, pady=30, sticky='n')
 
@@ -2436,7 +2435,7 @@ class StudentMenu(ctk.CTkFrame):
         self.pack_propagate(False)  # Prevent resizing based on widget content
 
         #image variable
-        trashImage = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/deleteIcon.png"),size=((0.08333333*sHeight),(0.08333333*sHeight)))
+        trashImage = ctk.CTkImage(light_image=Image.open(script_directory+r"/images/deleteIcon.png"),size=((0.08333333*sHeight),(0.08333333*sHeight)))
 
         #VARIABLES
         self.current_entry = None  # Track the currently selected entry
@@ -2953,7 +2952,7 @@ class EditAttendanceClass(ctk.CTkFrame):
         self.exit_button.place(relx=.865,rely=.04)  # Top right corner
 
         #Delete Check In
-        trashImage = ctk.CTkImage(light_image=Image.open(r"/home/raspberry/Downloads/button_images/deleteIcon.png"),size=(50,50))
+        trashImage = ctk.CTkImage(light_image=Image.open(script_directory+r"/images/deleteIcon.png"),size=(50,50))
         self.delete_button = ctk.CTkButton(self, text="", image=trashImage,width=60, height=60, command=lambda: self.delete_attendance())
         self.delete_button.place(relx=.86,rely=.76)
 
@@ -3288,7 +3287,7 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.no_button = ctk.CTkButton(self.option_frame, text='No', font=('Space Grotesk', 17, 'bold'), height=60)
         self.no_button.grid(sticky='w', row=0, column=1, padx=20)
 
-        self.warning_image = ctk.CTkImage(Image.open(r"/home/raspberry/Downloads/button_images/alreadyCheckExitButtonImage.png"),size=(int(sWidth/9),int(sWidth/9)))
+        self.warning_image = ctk.CTkImage(Image.open(script_directory+r"/images/alreadyCheckExitButtonImage.png"),size=(int(sWidth/9),int(sWidth/9)))
         self.exit_button = ctk.CTkButton(self.lower_frame, image = self.warning_image, text='', fg_color='#2B2B2B',border_color='white',border_width=4, command = lambda: hide_popup(self))
 
     def delete_student(self, macID):
