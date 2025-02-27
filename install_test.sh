@@ -82,7 +82,7 @@ if [ ! -d "$FONT_DIR" ]; then
 fi
 
 # Download the font if it's not already present
-if [ ! -f "Space_Grotesk.ttf" ]; then
+if [ ! -f "/home/pi/.fonts/Space_Grotesk.ttf" ]; then
     echo "Downloading Space Grotesk font..."
     wget -O "/home/pi/.fonts/Space_Grotesk.ttf" "https://github.com/floriankarsten/space-grotesk/raw/master/fonts/ttf/SpaceGrotesk%5Bwght%5D.ttf"
 else
