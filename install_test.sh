@@ -73,8 +73,30 @@ except ImportError as e:
 echo ""
 
 # Install Space Grotesk font only if not already installed ----------------------------------------------
+FONT_URL="https://github.com/floriankarsten/space-grotesk/raw/master/fonts/ttf/SpaceGrotesk%5Bwght%5D.ttf"
+FONT_DIR="$HOME/.fonts"
+FONT_FILE="$FONT_DIR/SpaceGrotesk[wght].ttf"
 
+# Create the .fonts directory if it doesn't exist
+if [ ! -d "$FONT_DIR" ]; then
+    echo "Creating .fonts directory in home folder"
+    mkdir -p "$FONT_DIR"
+fi
 
+# Download the font if it's not already present
+if [ ! -f "$FONT_FILE" ]; then
+    echo "Downloading Space Grotesk font..."
+    wget -O "$FONT_FILE" "$FONT_URL"
+else
+    echo "Font is already installed."
+fi
+
+# Update font cache so the font is available for Python
+echo "Updating font cache..."
+fc-cache -fv
+
+echo "Font installation complete! You can now use 'Space Grotesk' in Python."
+echo ""
 
 
 
