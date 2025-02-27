@@ -73,28 +73,8 @@ except ImportError as e:
 echo ""
 
 # Install Space Grotesk font only if not already installed ----------------------------------------------
-FONT_DIR="/usr/local/share/fonts/space-grotesk"
-FONT_REGULAR="$FONT_DIR/SpaceGrotesk[wght].ttf"
-FONT_URL="https://github.com/google/fonts/raw/main/ofl/spacegrotesk"
 
-# Check if font is already installed
-if ! sudo test -f "$FONT_REGULAR"; then
-    echo "Installing Space Grotesk font..."
-    
-    # Create font directory
-    sudo mkdir -p "$FONT_DIR"
-    
-    # Download all font variants
-    sudo wget -q --show-progress -P "$FONT_DIR" \
-      "$FONT_URL/SpaceGrotesk[wght].ttf" \
-      
-    
-    # Update font cache
-    sudo fc-cache -f -v
-    echo "Font installed successfully!"
-else
-    echo "Space Grotesk font already installed. Skipping."
-fi
+
 
 
 
