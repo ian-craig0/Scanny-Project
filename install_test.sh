@@ -39,6 +39,11 @@ apt-get install -y python3 python3-pip python3-tk mariadb-server python3-dev def
 echo "System packages installed/updated successfully!"
 echo ""
 
+#enabling I2C so piicodev RFID functions
+echo "Configuring I2C support..."
+sudo raspi-config nonint do_i2c 0
+echo "i2c-dev" | sudo tee -a /etc/modules
+sudo adduser pi i2c
 
 #installing python libraries --------------------------------------------------------------------------------
 echo "Installing python libraries..."
@@ -211,6 +216,8 @@ echo ""
 
 
 
+
+
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Function to rotate display
 rotate_display() {
@@ -261,4 +268,21 @@ sudo systemctl start kiosk.service
 echo "Kiosk mode successfully enabled!"
 echo ""
 
-echo "A reboot may be required for changes to take effect."
+# Reboot prompt -----------------------------------------------------------------
+echo ""
+echo "Installation complete!"
+read -p "Reboot now for everything to work? (Y/N) " -n 1 -r
+echo "" # move to new line
+
+case $REPLY in
+    [Yy]* )
+        echo "System rebooting in 5 seconds (Ctrl+C to cancel)..."
+        sleep 5
+        sudo reboot
+        ;;
+    * )
+        echo ""
+        echo "WARNING: The RFID scanner and screen rotation changes will not function until reboot!"
+        echo "         You must manually reboot later using: sudo reboot"
+        ;;
+esac
