@@ -220,7 +220,7 @@ echo ""
 
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Function to rotate display
-configure_display_rotation() {
+rotate_display() {
     CONFIG_FILE="/boot/firmware/config.txt"
     TARGET_SECTION="[all]"
     NEW_SETTING="display_rotate=2"
