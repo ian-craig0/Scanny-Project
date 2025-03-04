@@ -46,6 +46,12 @@ echo "i2c-dev" | sudo tee -a /etc/modules
 sudo adduser pi i2c
 echo ""
 
+#changing time zone
+TIMEZONE="America/Chicago"
+sudo timedatectl set-timezone "$TIMEZONE"
+echo "Time zone changed succcessfuly to America/Chicago"
+echo ""
+
 #installing python libraries --------------------------------------------------------------------------------
 echo "Installing python libraries..."
 VENV_PATH="/home/pi/scanny-venv"
