@@ -242,7 +242,7 @@ rotate_display() {
 # Function to rotate touch input
 rotate_touch() {
     XORG_CONF="/usr/share/X11/xorg.conf.d/40-libinput.conf"
-    IDENTIFIER='Identifier "libinput tablet catchall"'
+    IDENTIFIER='Identifier "libinput touchscreen catchall"'  # Changed identifier
     TRANSFORM_OPTION='Option "TransformationMatrix" "-1 0 1 0 -1 1 0 0 1"'
 
     # Backup original config
@@ -252,7 +252,7 @@ rotate_touch() {
     if ! grep -q "$TRANSFORM_OPTION" "$XORG_CONF"; then
         echo "Adding touch rotation configuration..."
         sudo sed -i "/$IDENTIFIER/,/EndSection/ {
-            /EndSection/i \	$TRANSFORM_OPTION
+            /MatchIsTouchscreen \"on\"/a \        $TRANSFORM_OPTION
         }" "$XORG_CONF"
     fi
 }
