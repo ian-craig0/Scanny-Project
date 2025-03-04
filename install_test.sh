@@ -220,40 +220,7 @@ echo ""
 
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Function to rotate display
-rotate_display() {
-    CONFIG_FILE="/boot/firmware/config.txt"
-    
-    # Create backup with timestamp
-    BACKUP_FILE="${CONFIG_FILE}.bak.$(date +%s)"
-    sudo cp "$CONFIG_FILE" "$BACKUP_FILE"
-    
-    # Check if display_rotate=2 is already in the file
-    if ! grep -q "^display_rotate=2" "$CONFIG_FILE"; then
-        # Append display_rotate=2 right after the [all] section header
-        sed -i '/^\[all\]/a display_rotate=2' "$CONFIG_FILE"
-    fi
-}
-
-
-# Function to rotate touch input
-rotate_touch() {
-    XORG_CONF="/usr/share/X11/xorg.conf.d/40-libinput.conf"
-    IDENTIFIER='Identifier "libinput touchscreen catchall"'  # Changed identifier
-    TRANSFORM_OPTION='Option "TransformationMatrix" "-1 0 1 0 -1 1 0 0 1"'
-
-    # Backup original config
-    sudo cp "$XORG_CONF" "${XORG_CONF}.bak.$(date +%s)"
-
-    # Check if transformation already exists
-    if ! grep -q "$TRANSFORM_OPTION" "$XORG_CONF"; then
-        echo "Adding touch rotation configuration..."
-        sudo sed -i "/$IDENTIFIER/,/EndSection/ {
-            /MatchIsTouchscreen \"on\"/a \        $TRANSFORM_OPTION
-        }" "$XORG_CONF"
-    fi
-}
-rotate_display
-rotate_touch
+sudo  wlr-randr --output HDMI-A-2 --transform 180
 echo "Display and touch rotation configurations applied successfully!"
 echo ""
 
