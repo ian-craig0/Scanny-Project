@@ -220,22 +220,32 @@ echo ""
 
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Function to rotate display
-rotate_display() {
+configure_display_rotation() {
     CONFIG_FILE="/boot/firmware/config.txt"
-    SECTION_HEADER="[all]"
-    ROTATE_SETTING="display_rotate=2"
+    TARGET_SECTION="[all]"
+    NEW_SETTING="display_rotate=2"
+    
+    # Create backup with timestamp
+    BACKUP_FILE="${CONFIG_FILE}.bak.$(date +%s)"
+    sudo cp "$CONFIG_FILE" "$BACKUP_FILE"
 
-    # Backup original config
-    sudo cp "$CONFIG_FILE" "${CONFIG_FILE}.bak.$(date +%s)"
-
-    # Check if section exists
-    if ! grep -q "^$SECTION_HEADER" "$CONFIG_FILE"; then
+    # Check if setting already exists in [all] section
+    if ! awk -v RS= '/\[all\]/ && /display_rotate=2/' "$CONFIG_FILE" > /dev/null; then
         echo "Adding display rotation configuration..."
-        echo -e "\n$SECTION_HEADER" | sudo tee -a "$CONFIG_FILE" >/dev/null
-        echo "$ROTATE_SETTING" | sudo tee -a "$CONFIG_FILE" >/dev/null
-    elif ! grep -q "^$ROTATE_SETTING" "$CONFIG_FILE"; then
-        echo "Updating display rotation configuration..."
-        sudo sed -i "/^$SECTION_HEADER/a $ROTATE_SETTING" "$CONFIG_FILE"
+        
+        # Insert setting after [all] header
+        sudo sed -i "/^${TARGET_SECTION}$/a ${NEW_SETTING}" "$CONFIG_FILE"
+        
+        # Verify insertion
+        if grep -A1 "^${TARGET_SECTION}$" "$CONFIG_FILE" | grep -q "$NEW_SETTING"; then
+            echo "Successfully added display rotation configuration"
+        else
+            echo "Failed to add configuration! Restoring backup..."
+            sudo mv "$BACKUP_FILE" "$CONFIG_FILE"
+            exit 1
+        fi
+    else
+        echo "Display rotation already configured in [all] section"
     fi
 }
 
