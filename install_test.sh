@@ -44,6 +44,7 @@ echo "Configuring I2C support..."
 sudo raspi-config nonint do_i2c 0
 echo "i2c-dev" | sudo tee -a /etc/modules
 sudo adduser pi i2c
+echo ""
 
 #installing python libraries --------------------------------------------------------------------------------
 echo "Installing python libraries..."
@@ -142,7 +143,7 @@ User=pi
 WorkingDirectory=/home/pi/Desktop/scanny
 ExecStart=/home/pi/scanny-venv/bin/python /home/pi/Desktop/scanny/main.py
 Restart=always
-RestartSec=3
+RestartSec=5
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/pi/.Xauthority
 
@@ -219,8 +220,11 @@ echo ""
 
 
 #invert display and touch inputs --------------------------------------------------------------------------------
-# Function to rotate display
-sudo  wlr-randr --output HDMI-A-2 --transform 180
+# Define the line to add
+LINE="wlr-randr --output HDMI-A-2 --transform 180 &"
+
+# Check if the line already exists to avoid duplicates
+grep -qxF "$LINE" /etc/xdg/labwc/autostart || echo "$LINE" | sudo tee -a /etc/xdg/labwc/autostart > /dev/null
 echo "Display and touch rotation configurations applied successfully!"
 echo ""
 
