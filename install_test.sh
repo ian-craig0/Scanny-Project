@@ -35,7 +35,7 @@ echo ""
 
 #installing system packages --------------------------------------------------------------------------------
 echo "Installing/Updating system packages..."
-apt-get install -y python3 python3-pip python3-tk mariadb-server
+apt-get install -y python3 python3-pip python3-tk mariadb-server python3-dev default-libmysqlclient-dev build-essential pkg-config
 echo "System packages installed/updated successfully!"
 echo ""
 
