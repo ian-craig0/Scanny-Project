@@ -222,50 +222,15 @@ echo ""
 # Function to rotate display
 rotate_display() {
     CONFIG_FILE="/boot/firmware/config.txt"
-    TARGET_SECTION="[all]"
-    NEW_SETTING="display_rotate=2"
     
     # Create backup with timestamp
     BACKUP_FILE="${CONFIG_FILE}.bak.$(date +%s)"
     sudo cp "$CONFIG_FILE" "$BACKUP_FILE"
-
-    # Improved section-aware check
-    if ! awk -v target="$TARGET_SECTION" -v setting="$NEW_SETTING" '
-        /^\[/ { current_section = $0 }
-        (current_section == target) && $0 ~ setting { found = 1 }
-        END { exit !found }
-    ' "$CONFIG_FILE"; then
-        echo "Adding display rotation configuration to [all] section..."
-        
-        # Improved insertion that maintains section structure
-        sudo sed -i "
-            /^${TARGET_SECTION}$/ {
-                # Print the section header
-                p
-                # Add our setting with proper indentation
-                a\    ${NEW_SETTING}
-                # Skip existing lines until next section
-                :loop
-                n
-                /^\[/! b loop
-                # When next section found, process normally
-            }
-        " "$CONFIG_FILE"
-
-        # Verify insertion
-        if awk -v target="$TARGET_SECTION" -v setting="$NEW_SETTING" '
-            /^\[/ { current_section = $0 }
-            (current_section == target) && $0 ~ setting { found = 1 }
-            END { exit !found }
-        ' "$CONFIG_FILE"; then
-            echo "Successfully added display rotation configuration"
-        else
-            echo "Failed to add configuration! Restoring backup..."
-            sudo mv "$BACKUP_FILE" "$CONFIG_FILE"
-            exit 1
-        fi
-    else
-        echo "Display rotation already configured in [all] section"
+    
+    # Check if display_rotate=2 is already in the file
+    if ! grep -q "^display_rotate=2" "$CONFIG_FILE"; then
+        # Append display_rotate=2 right after the [all] section header
+        sed -i '/^\[all\]/a display_rotate=2' "$CONFIG_FILE"
     fi
 }
 
