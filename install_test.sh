@@ -229,15 +229,35 @@ rotate_display() {
     BACKUP_FILE="${CONFIG_FILE}.bak.$(date +%s)"
     sudo cp "$CONFIG_FILE" "$BACKUP_FILE"
 
-    # Check if setting already exists in [all] section
-    if ! awk -v RS= '/\[all\]/ && /display_rotate=2/' "$CONFIG_FILE" > /dev/null; then
-        echo "Adding display rotation configuration..."
+    # Improved section-aware check
+    if ! awk -v target="$TARGET_SECTION" -v setting="$NEW_SETTING" '
+        /^\[/ { current_section = $0 }
+        (current_section == target) && $0 ~ setting { found = 1 }
+        END { exit !found }
+    ' "$CONFIG_FILE"; then
+        echo "Adding display rotation configuration to [all] section..."
         
-        # Insert setting after [all] header
-        sudo sed -i "/^${TARGET_SECTION}$/a ${NEW_SETTING}" "$CONFIG_FILE"
-        
+        # Improved insertion that maintains section structure
+        sudo sed -i "
+            /^${TARGET_SECTION}$/ {
+                # Print the section header
+                p
+                # Add our setting with proper indentation
+                a\    ${NEW_SETTING}
+                # Skip existing lines until next section
+                :loop
+                n
+                /^\[/! b loop
+                # When next section found, process normally
+            }
+        " "$CONFIG_FILE"
+
         # Verify insertion
-        if grep -A1 "^${TARGET_SECTION}$" "$CONFIG_FILE" | grep -q "$NEW_SETTING"; then
+        if awk -v target="$TARGET_SECTION" -v setting="$NEW_SETTING" '
+            /^\[/ { current_section = $0 }
+            (current_section == target) && $0 ~ setting { found = 1 }
+            END { exit !found }
+        ' "$CONFIG_FILE"; then
             echo "Successfully added display rotation configuration"
         else
             echo "Failed to add configuration! Restoring backup..."
@@ -248,6 +268,7 @@ rotate_display() {
         echo "Display rotation already configured in [all] section"
     fi
 }
+
 
 # Function to rotate touch input
 rotate_touch() {
