@@ -295,7 +295,6 @@ echo ""
 #enabling service for python script
 sudo systemctl daemon-reload
 sudo systemctl enable kiosk.service
-sudo systemctl start kiosk.service
 echo "Kiosk mode successfully enabled!"
 echo ""
 
@@ -308,11 +307,13 @@ echo "" # move to new line
 case $REPLY in
     [Yy]* )
         echo "System rebooting in 5 seconds (Ctrl+C to cancel)..."
+        sudo systemctl start kiosk.service
         sleep 5
         sudo reboot
         ;;
     * )
         echo ""
+        sudo systemctl start kiosk.service
         echo "WARNING: The RFID scanner and screen rotation changes will not function until reboot!"
         echo "         You must manually reboot later using: sudo reboot"
         ;;
