@@ -219,9 +219,32 @@ echo ""
 
 
 
-#create update service with username and login to update python script ---------------------------------------------------
+#create update service to update python script ---------------------------------------------------
+echo "Creating update service!"
+#update service
+sudo tee /etc/systemd/system/update.service > /dev/null <<'EOF'
+[Unit]
+Description=Run daily update script for my python script
+After=network.target
 
+[Service]
+Type=oneshot
+User=pi
+ExecStart=/bin/bash -c 'curl -fsSL https://raw.githubusercontent.com/ian-craig0/Scanny-Project/main/update.sh | bash'
+EOF
 
+#update service timer
+sudo tee /etc/systemd/system/update_script.timer > /dev/null <<'EOF'
+[Unit]
+Description=Daily timer to update python script at midnight
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
 
 
 
@@ -234,9 +257,10 @@ grep -qxF "$LINE" /etc/xdg/labwc/autostart || echo "$LINE" | sudo tee -a /etc/xd
 echo "Display and touch rotation configurations applied successfully!"
 echo ""
 
-#enabling service for python script
+#enabling services for python script
 sudo systemctl daemon-reload
 sudo systemctl enable kiosk.service
+sudo systemctl enable --now update_script.timer
 echo "Kiosk mode successfully enabled!"
 echo ""
 
