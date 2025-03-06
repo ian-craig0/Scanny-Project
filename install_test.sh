@@ -234,7 +234,7 @@ ExecStart=/bin/bash -c 'curl -fsSL https://raw.githubusercontent.com/ian-craig0/
 EOF
 
 #update service timer
-sudo tee /etc/systemd/system/update_script.timer > /dev/null <<'EOF'
+sudo tee /etc/systemd/system/update.timer > /dev/null <<'EOF'
 [Unit]
 Description=Daily timer to update python script at midnight
 
@@ -245,8 +245,8 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 EOF
-
-
+echo "Update service created successfully!"
+echo ""
 
 #invert display and touch inputs --------------------------------------------------------------------------------
 # Define the line to add
