@@ -260,7 +260,7 @@ echo ""
 #enabling services for python script
 sudo systemctl daemon-reload
 sudo systemctl enable kiosk.service
-sudo systemctl enable --now update_script.timer
+sudo systemctl enable --now update.timer
 echo "Kiosk mode successfully enabled!"
 echo ""
 
