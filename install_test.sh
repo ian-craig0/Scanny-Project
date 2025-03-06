@@ -27,7 +27,7 @@ echo ""
 # update system packages --------------------------------------------------------------------------------
 echo "Updating system packages..."
 apt-get update
-apt-get upgrade -y
+apt-get full-upgrade
 echo "System packages updated successfully!"
 echo ""
 
