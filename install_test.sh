@@ -103,7 +103,7 @@ fi
 
 # Update font cache so the font is available for Python
 echo "Updating font cache..."
--u pi fc-cache -fv
+su - pi -c 'fc-cache -fv'
 
 echo "Font installation complete! You can now use 'Space Grotesk' in Python."
 echo ""
