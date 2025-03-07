@@ -134,6 +134,7 @@ fi
 
 # Fix permissions (since script runs with sudo)
 chown -R pi:pi "$TARGET_DIR"
+chown -R pi:pi /home/pi/Scanny-Project
 echo "Scanny contents downloaded/updated successfuly!"
 echo ""
 
