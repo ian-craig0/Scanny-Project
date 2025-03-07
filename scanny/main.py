@@ -1835,25 +1835,25 @@ class settingsClass(ctk.CTkFrame):
         self.grid_rowconfigure(1, weight=1)
 
         # Regular buttons (no labels above)
-        self.password_button = ctk.CTkButton(self.left_frame, text="Change Password", height=50,font=('Space Grotesk',16,'bold'),command=self.change_password)
-        self.password_button.grid(row=1, column=0, pady=15)
+        self.arrival_button = ctk.CTkButton(self.left_frame, text="Edit Schedules",height=40,font=('Space Grotesk',16,'bold'), command=self.edit_schedule)
+        self.arrival_button.grid(row=0, column=0, pady=10)
+        
+        self.password_button = ctk.CTkButton(self.left_frame, text="Change Password", height=40,font=('Space Grotesk',16,'bold'),command=self.change_password)
+        self.password_button.grid(row=1, column=0, pady=10)
 
-        self.arrival_button = ctk.CTkButton(self.left_frame, text="Edit Schedules",height=50,font=('Space Grotesk',16,'bold'), command=self.edit_schedule)
-        self.arrival_button.grid(row=0, column=0, pady=(20, 10))
+        self.timeout_button = ctk.CTkButton(self.left_frame, text='Change Idle Timeout', height = 40, width = 150, font = ('Space Grotesk', 16, 'bold'), command=self.edit_timeout)
+        self.timeout_button.grid(row=2, column=0, pady=10)
 
-        self.timeout_button = ctk.CTkButton(self.left_frame, text='Change Idle Timeout', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command=self.edit_timeout)
-        self.timeout_button.grid(row=2, column=0, pady=15)
+        self.wifi_button = ctk.CTkButton(self.left_frame, text='Connect Wifi', height = 40, font = ('Space Grotesk', 16, 'bold'), command=lambda: tabSwap(7))
+        self.wifi_button.grid(row=3, column=0, pady=10)
 
-        self.wifi_button = ctk.CTkButton(self.left_frame, text='Connect Wifi', height = 50, font = ('Space Grotesk', 16, 'bold'), command=lambda: tabSwap(7))
-        self.wifi_button.grid(row=3, column=0, pady=15)
+        self.dynamic_day_button = ctk.CTkButton(self.left_frame, text='Change Daytype\n(dynamic)', height = 40, width = 150, font = ('Space Grotesk', 16, 'bold'), command = lambda: display_popup(fridayperiodframe))
 
-        self.dynamic_day_button = ctk.CTkButton(self.left_frame, text='Change Daytype\n(dynamic)', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command = lambda: display_popup(fridayperiodframe))
+        self.restart_button = ctk.CTkButton(self.left_frame, text= 'Refresh System', height = 40, width = 150, font = ('Space Grotesk', 16, 'bold'), command = self.restart_check)
+        self.restart_button.grid(row=6, column=0, pady=10)
 
-        self.restart_button = ctk.CTkButton(self.left_frame, text= 'Refresh System', height = 50, width = 150, font = ('Space Grotesk', 16, 'bold'), command = self.restart_check)
-        self.restart_button.grid(row=6, column=0, pady=15)
-
-        self.reset_button = ctk.CTkButton(self.left_frame, text="Factory Reset",height=50,font=('Space Grotesk',16,'bold'), command=lambda: warning_confirmation.config('factory reset'))
-        self.reset_button.grid(row=7, column=0, pady=15)
+        self.reset_button = ctk.CTkButton(self.left_frame, text="Factory Reset",height=40,font=('Space Grotesk',16,'bold'), command=lambda: warning_confirmation.config('factory reset'))
+        self.reset_button.grid(row=7, column=0, pady=10)
 
 
         # Configure row stretching for the last row
@@ -1898,7 +1898,7 @@ class settingsClass(ctk.CTkFrame):
 
     def toggle_dynamic_button(self, value):
         if value:
-            self.dynamic_day_button.grid(row=4, column=0, pady=15)
+            self.dynamic_day_button.grid(row=4, column=0, pady=10)
         else:
             self.dynamic_day_button.grid_forget()
 
