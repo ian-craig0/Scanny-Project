@@ -218,6 +218,41 @@ else
 fi
 echo ""
 
+#create update script
+cat <<EOF > /home/pi/update.sh
+#!/bin/bash
+sudo systemctl stop kiosk.service
+
+REPO_URL="https://github.com/ian-craig0/Scanny-Project.git"
+REPO_DIR="Scanny-Project"  # Local clone directory
+TARGET_DIR="/home/pi/Desktop/scanny"  # Case-sensitive path!
+
+# Clone or update the repository
+if [ -d "\$REPO_DIR" ]; then
+  git -C "\$REPO_DIR" pull
+else
+  git clone "\$REPO_URL" "\$REPO_DIR"
+fi
+
+# Update or create the target directory
+if [ -d "\$TARGET_DIR" ]; then
+  rsync -a --delete "\$REPO_DIR/scanny/" "\$TARGET_DIR/"
+else
+  cp -r "\$REPO_DIR/scanny" "\$TARGET_DIR"
+fi
+
+# Fix permissions (since script runs with sudo)
+chown -R pi:pi "\$TARGET_DIR"
+chown -R pi:pi /home/pi/Scanny-Project
+
+sudo sed -i -E \\
+  -e "s/(user\s*=\s*['\"][^'\"]*['\"])/\\1${new_user}\\2/g" \\
+  -e "s/(passwd\s*=\s*['\"][^'\"]*['\"])/\\1${escaped_pass}\\2/g" \\
+  "/home/pi/Desktop/scanny/main.py"
+echo ""
+ 
+sudo systemctl start kiosk.service
+EOF
 
 
 #create update service to update python script ---------------------------------------------------
@@ -231,7 +266,7 @@ After=network.target
 [Service]
 Type=oneshot
 User=pi
-ExecStart=/bin/bash -c 'curl -fsSL https://raw.githubusercontent.com/ian-craig0/Scanny-Project/main/update.sh | bash'
+ExecStart=/home/pi/update.sh
 EOF
 
 #update service timer
