@@ -246,14 +246,13 @@ chown -R pi:pi "\$TARGET_DIR"
 chown -R pi:pi /home/pi/Scanny-Project
 
 sudo sed -i -E \\
-  -e "s/(user\s*=\s*['\"][^'\"]*['\"])/\\1${new_user}\\2/g" \\
-  -e "s/(passwd\s*=\s*['\"][^'\"]*['\"])/\\1${escaped_pass}\\2/g" \\
+  -e "s/(user\s*=\s*['\"])[^'\"]*(['\"])/\\1${new_user}\\2/g" \\
+  -e "s/(passwd\s*=\s*['\"])[^'\"]*(['\"])/\\1${escaped_pass}\\2/g" \\
   "/home/pi/Desktop/scanny/main.py"
 echo ""
  
 sudo systemctl start kiosk.service
 EOF
-
 
 #create update service to update python script ---------------------------------------------------
 echo "Creating update service!"
