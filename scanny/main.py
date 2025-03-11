@@ -2271,7 +2271,7 @@ def timeout():
     """The main loop for the countdown."""
     global timeout_flag, timeout_active, reset_flag, currentPopup
     timeout_active = True
-    time_left = getFromSystem_Control("select timeout_time from system_control", None, True)[0]  # Initial countdown time in seconds
+    time_left = int(getFromSystem_Control("select timeout_time from system_control", None, True)[0])  # Initial countdown time in seconds
 
     while timeout_active:
         if timeout_flag:  # Stop the loop
@@ -2279,17 +2279,13 @@ def timeout():
 
         if reset_flag:  # Reset the timer
             reset_flag = False
-            time_left = getFromSystem_Control("select timeout_time from system_control", None, True)[0]  # Reset countdown
+            time_left = int(getFromSystem_Control("select timeout_time from system_control", None, True)[0])  # Reset countdown
 
         if time_left > 0:
             time_left -= 1
             time.sleep(1)
         else:
-            window.after(0, lambda: hide_popup(currentPopup) if currentPopup and currentPopup.winfo_ismapped() else None)
-            window.after(0, getStudentInfoFrame.close_popup)
-            window.after(0, internetMenu.close_popup)
-            window.after(0, lambda: tabSwap(1))
-            timeout_active = False  # Exit the loop when the timeout ends
+            window.after(0, lambda: timeout_result)
 
 def start_timeout():
     """Start the timeout thread if not already running."""
@@ -2313,6 +2309,13 @@ def stop_timeout():
         timeout_flag = True
         timeout_active = False
 
+def timeout_result():
+    global currentPopup, timeout_active
+    hide_popup(currentPopup) if currentPopup and currentPopup.winfo_ismapped() else None
+    getStudentInfoFrame.close_popup
+    internetMenu.close_popup
+    tabSwap(1)
+    timeout_active = False
 
 #TABSWAP--
 currentTAB = 0
