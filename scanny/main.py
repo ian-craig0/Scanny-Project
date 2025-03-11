@@ -487,9 +487,9 @@ def checkIN():
                                                 status = getAttendance(scan_time, period_ID, checkInCursor)
                                                 #NEED REASON LOGIC (FOR NOW ALWAYS NULL)
                                                 callMultiple(checkInCursor, """INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
+                                                window.after(0, lambda: run_success_scan(scan_time, ID, status))
                                                 window.after(0, lambda: tabSwap(2))
                                                 window.after(0, lambda: studentListPop(period_ID))
-                                                window.after(0, lambda: run_success_scan(scan_time, ID, status))
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
                                             continue
                                     if notInPeriod:
