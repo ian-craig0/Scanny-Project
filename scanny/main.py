@@ -262,7 +262,7 @@ def refresh_teacher_frame():
     teacherFrame.period_selected(teacherFrame.period_menu.get())
 
 def run_success_scan(scan_time, ID, status):
-    threading.Thread(target=successscan, args=(scan_time, ID, status)).start()
+    threading.Thread(target=successScan, args=(scan_time, ID, status)).start()
 
 #CHANGING DATA FUNCTIONS
 def tempResetArrivalTimes():
