@@ -261,6 +261,8 @@ def refresh_teacher_frame():
     warning_confirmation.config("reset ID success")
     teacherFrame.period_selected(teacherFrame.period_menu.get())
 
+def run_success_scan(scan_time, ID, status):
+    threading.Thread(target=successscan, args=(scan_time, ID, status)).start()
 
 #CHANGING DATA FUNCTIONS
 def tempResetArrivalTimes():
@@ -487,7 +489,7 @@ def checkIN():
                                                 callMultiple(checkInCursor, """INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
                                                 window.after(0, lambda: tabSwap(2))
                                                 window.after(0, lambda: studentListPop(period_ID))
-                                                window.after(0, lambda: successScan(scan_time, ID, status))
+                                                window.after(0, lambda: run_success_scan(scan_time, ID, status))
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
                                             continue
                                     if notInPeriod:
