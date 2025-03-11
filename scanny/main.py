@@ -218,6 +218,48 @@ def getAttendance(time, period_ID, cursor):
     # Pass `time`, `time`, `schedule_ID`, and `period_ID` as parameters to the query
     return callMultiple(cursor, query, (time, time, schedule_ID, period_ID), True)[0]
 
+def handle_settings_edit(ID, reset_oldMACID):
+    """Runs on the main thread - safe for GUI operations"""
+    if not warning_confirmation.winfo_ismapped():
+        return
+
+    if warning_confirmation.current_key == "reset ID":
+        # Database query can stay here if fast, or move to background thread
+        student_exists = getFromStudent_Names(
+            "SELECT first_name FROM student_names WHERE macID = %s", (ID,), True)
+        
+        if student_exists:
+            firstname, lastname = getFirstLastName(ID)
+            warning_confirmation.warning_confirmation_dict['reset ID fail'][1] = \
+                f"*This ID is already assigned to {firstname} {lastname}.*"
+            warning_confirmation.config("reset ID fail")
+        else:
+            firstname, lastname = getFirstLastName(reset_oldMACID)
+            # Schedule database write to run in background
+            threading.Thread(target=update_student_id, args=(ID, reset_oldMACID)).start()
+            
+    elif currentTAB != 6:
+        if getFromStudent_Names("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
+            window.after(0, lambda: editStudentData(ID))
+
+def update_student_id(new_id, old_id):
+    """Runs in background thread - only does database work"""
+    getFromStudent_Names(
+        "UPDATE student_names SET macID = %s WHERE macID = %s",
+        (new_id, old_id),
+        False,
+        False
+    )
+    
+    # Schedule GUI update on main thread
+    window.after(0, refresh_teacher_frame)
+
+def refresh_teacher_frame():
+    """Runs on main thread - safe for GUI operations"""
+    warning_confirmation.warning_confirmation_dict['reset ID success'][1] = \
+        f"*{firstname} {lastname}'s ID has been reset!*"  # Requires closure capture
+    warning_confirmation.config("reset ID success")
+    teacherFrame.period_selected(teacherFrame.period_menu.get())
 
 
 #CHANGING DATA FUNCTIONS
@@ -345,7 +387,8 @@ def studentListPop(period_ID):
         #CLEAR THE STUDENTLIST FRAME
         studentList.configure(label_text=callMultiple(studentListCursor, "select name from periods where period_ID = %s", (period_ID,), True)[0])
         for widget in studentList.winfo_children():
-            widget.destroy()
+            if widget.winfo_exists():
+                widget.destroy()
         query = """SELECT sp.macID, sn.first_name, sn.last_name, sc.status, sc.scan_time
 FROM student_periods sp
 JOIN student_names sn ON sp.macID = sn.macID
@@ -413,8 +456,8 @@ def checkIN():
             if ID:
                 if str(ID) == master_macID:
                     if teacherPWPopup.getDisplayed():
-                        teacherPWPopup.close_popup()
-                        tabSwap(teacherPWPopup.get_tab()+2)
+                        window.after(0, lambda: teacherPWPopup.close_popup)
+                        window.after(0, lambda: tabSwap(teacherPWPopup.get_tab()+2))
                         sleep_ms(3000)
                 elif currentTAB == 1 or currentTAB == 2:
                     if currentPopup != warning_confirmation and currentPopup !=fridayperiodframe:
@@ -424,9 +467,9 @@ def checkIN():
                             if get_active_schedule_ID(): #CHECK IF THERE IS A SELECTED ACTIVE SCHEDULE
                                 current_period = get_current_Period_ID(scan_time, checkInCursor)
                                 if not current_period: #NO CLASS ON THIS DAY
-                                    warning_confirmation.config("no schedule today")
+                                    window.after(0, lambda: warning_confirmation.config("no schedule today"))
                                 elif current_period == "-": #NO CLASS AT THIS TIME ON THIS VALID DAY
-                                    warning_confirmation.config("no class currently")
+                                    window.after(0, lambda: warning_confirmation.config("no class currently"))
                                 else: #ONLY RUNS IF THERE IS A PERIOD TODAY!
                                     #GET LIST OF PERIODS FOR THIS SPECIFIC DAY
                                     periods_today = getPeriodsToday(studentPeriodList, checkInCursor) #GET THE STUDENT PERIODS FOR THE DAY
@@ -437,42 +480,28 @@ def checkIN():
                                             notInPeriod = False
                                             #CHECK IF THERE IS A SCAN ALREADY FOR TODAY, FOR THE STUDENT, IN THE CURRENT PERIOD, FOR THE ACTIVE SCHEDULE
                                             if callMultiple(checkInCursor, "SELECT 1 FROM scans WHERE schedule_ID = %s AND period_ID = %s AND macID = %s AND scan_date = %s LIMIT 1", (get_active_schedule_ID(), period_ID, ID, scan_date), True):
-                                                warning_confirmation.config("double scan")
+                                                window.after(0, lambda: warning_confirmation.config("double scan"))
                                             else: #IF THEY ARE IN THE CURRENT PERIOD ON THIS DAY AND HAVEN'T CHECKED IN YET
                                                 status = getAttendance(scan_time, period_ID, checkInCursor)
                                                 #NEED REASON LOGIC (FOR NOW ALWAYS NULL)
                                                 callMultiple(checkInCursor, """INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
-                                                tabSwap(2)
-                                                studentListPop(period_ID)
-                                                successScan(scan_time, ID, status)
+                                                window.after(0, lambda: tabSwap(2))
+                                                window.after(0, lambda: studentListPop(period_ID))
+                                                window.after(0, lambda: successScan(scan_time, ID, status))
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
                                             continue
                                     if notInPeriod:
                                         #DISPLAY YOU ARE NOT IN THE CURRENT PERIOD
-                                        warning_confirmation.config('wrong period')
+                                        window.after(0, lambda: warning_confirmation.config('wrong period'))
                             else: #NO ACTIVE SCHEDULE
-                                warning_confirmation.config('no active schedule')
+                                window.after(0, lambda: warning_confirmation.config('no active schedule'))
                         else: #CREATE NEW STUDENT ENTRY BECAUSE THEY ARE NOT IN MASTER DATABASE
                             #GET STUDENT DATA WITH POP UP
                             getStudentInfoFrame.setMACID(ID)
-                            tabSwap(6)
+                            window.after(0, lambda: tabSwap(6))
                         checkInCursor.close()
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
-                    if warning_confirmation.winfo_ismapped():
-                        if warning_confirmation.current_key == "reset ID":
-                            if getFromStudent_Names("select first_name from student_names where macID = %s", (ID,), True):
-                                firstname, lastname = getFirstLastName(ID)
-                                warning_confirmation.warning_confirmation_dict['reset ID fail'][1] = f"*This ID is already asssigned to {firstname} {lastname}.*"
-                                warning_confirmation.config("reset ID fail")
-                            else:
-                                firstname, lastname = getFirstLastName(reset_oldMACID)
-                                getFromStudent_Names("update student_names set macID = %s where macID = %s", (ID,reset_oldMACID), False, False)
-                                warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
-                                warning_confirmation.config("reset ID success")
-                                teacherFrame.period_selected(teacherFrame.period_menu.get())
-                    elif currentTAB != 6:
-                        if getFromStudent_Names("select first_name from student_names where macID = %s", (ID,), True):
-                            editStudentData(ID)
+                    window.after(0, handle_settings_edit(ID, reset_oldMACID))
                 sleep_ms(100)
             else:
                 sleep_ms(100)
@@ -2254,12 +2283,10 @@ def timeout():
             time_left -= 1
             time.sleep(1)
         else:
-            if currentPopup:
-                if currentPopup.winfo_ismapped(): #POTENTIAL FOR ERRORS
-                    hide_popup(currentPopup)
-            getStudentInfoFrame.close_popup()
-            internetMenu.close_popup()
-            tabSwap(1)
+            window.after(0, lambda: hide_popup(currentPopup) if currentPopup and currentPopup.winfo_ismapped() else None)
+            window.after(0, getStudentInfoFrame.close_popup)
+            window.after(0, internetMenu.close_popup)
+            window.after(0, lambda: tabSwap(1))
             timeout_active = False  # Exit the loop when the timeout ends
 
 def start_timeout():
@@ -2775,20 +2802,20 @@ class editInternetClass(ctk.CTkFrame):
                 if ping_result.returncode == 0:
                     connected = True
                     break
-        self.after(0, self.finish_check_connection, ssid, connected)
+        window.after(0, self.finish_check_connection, ssid, connected)
 
     def finish_check_connection(self, ssid, connected):
-        loading_indicator.stop_spinning()
-        hide_popup(loading_indicator)
+        window.after(0, loading_indicator.stop_spinning)
+        window.after(0, lambda: hide_popup(loading_indicator))
 
         if connected:
             warning_confirmation.warning_confirmation_dict["network success"][1] = f"Successfully connected to {ssid}!"
-            warning_confirmation.config("network success")
+            window.after(0, lambda: warning_confirmation.config("network success"))
         else:
             warning_confirmation.warning_confirmation_dict["network fail"][1] = (
                 f"Failed to establish a connection with {ssid}."
             )
-            warning_confirmation.config("network fail")
+            window.after(0, lambda: warning_confirmation.config("network fail"))
 
 internetMenu = editInternetClass(window)
 
