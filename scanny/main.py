@@ -2434,6 +2434,7 @@ def editAttendanceData(scan_ID, attendance, reason):
     display_popup(editAttendanceFrame)
 
 def successScan(time, macID, attendance):
+    print(time, macID, attendance)
     status_dict = {2: ('Present', 'green', imgSuccessLabel),1: ('Tardy', 'orange', imgSuccess_Tardy_Label),0: ('Late', 'red', imgSuccess_Late_Label)}
     status, color, imgLabel = status_dict.get(attendance)
     studentName = " ".join(getFirstLastName(macID))
