@@ -2441,7 +2441,8 @@ def successScan(time, macID, attendance):
     successLabel2.configure(text=f"{studentName}\nChecked in at {timeConvert(time)}")
     imgLabel.lift()
     successFrame.lift()
-    window.after_idle(window.after(2, lambda: successFrame.lower()))
+    window.after_idle(lambda: window.update_idletasks())
+    window.after(2000, lambda: successFrame.lower())
 
 def historySettingButtons(tab, tab2):
     global currentTAB
