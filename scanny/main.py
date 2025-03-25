@@ -261,8 +261,9 @@ def refresh_teacher_frame():
     warning_confirmation.config("reset ID success")
     teacherFrame.period_selected(teacherFrame.period_menu.get())
 
-def run_success_scan(scan_time, ID, status):
-    threading.Thread(target=successScan, args=(scan_time, ID, status)).start()
+def close_success_scan():
+    time.sleep(2)
+    window.after(0, lambda: successFrame.lower())
 
 #CHANGING DATA FUNCTIONS
 def tempResetArrivalTimes():
@@ -2441,8 +2442,7 @@ def successScan(time, macID, attendance):
     successLabel2.configure(text=f"{studentName}\nChecked in at {timeConvert(time)}")
     imgLabel.lift()
     successFrame.lift()
-    window.after_idle(lambda: window.update_idletasks())
-    window.after(2000, lambda: successFrame.lower())
+    threading.Thread(target=close_success_scan).start()
 
 def historySettingButtons(tab, tab2):
     global currentTAB
