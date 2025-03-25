@@ -1,23 +1,14 @@
-#testing (for real this time #103)
-#THREADING
+#SYSTEM IMPORTS
+import subprocess
+import os
 import threading
-
-#Better function
 from functools import partial
 
-#ANIMATION
-import os
-import glob
-import math
-import random
-
-#REOPENING CODE
-import sys
-import subprocess
-
-#RFID SCANNER AND MYSQL IMPORTS
+#RFID SCANNER IMPORTS
 from PiicoDev_RFID import PiicoDev_RFID
 from PiicoDev_Unified import sleep_ms
+
+#MYSQL IMPORTS
 import MySQLdb
 import mysql.connector
 import mysql.connector.pooling
@@ -34,6 +25,7 @@ import tkinter as tk
 from tkinter import *
 from tkinter.ttk import *
 import customtkinter as ctk
+import glob
 from PIL import Image, ImageTk
 
 #MYSQL DATABASE INITIALIZATION
@@ -236,28 +228,15 @@ def handle_settings_edit(ID, reset_oldMACID):
         else:
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
-            threading.Thread(target=update_student_id, args=(ID, reset_oldMACID)).start()
+            getFromStudent_Names("UPDATE student_names SET macID = %s WHERE macID = %s", (new_id, old_id), False, False)
+            window.after(0, refresh_teacher_frame)
             
     elif currentTAB != 6:
         if getFromStudent_Names("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
             window.after(0, lambda i0 = ID: editStudentData(i0))
 
-def update_student_id(new_id, old_id):
-    """Runs in background thread - only does database work"""
-    getFromStudent_Names(
-        "UPDATE student_names SET macID = %s WHERE macID = %s",
-        (new_id, old_id),
-        False,
-        False
-    )
-    
-    # Schedule GUI update on main thread
-    window.after(0, refresh_teacher_frame)
-
 def refresh_teacher_frame():
-    """Runs on main thread - safe for GUI operations"""
-    warning_confirmation.warning_confirmation_dict['reset ID success'][1] = \
-        f"*{firstname} {lastname}'s ID has been reset!*"  # Requires closure capture
+    warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
     warning_confirmation.config("reset ID success")
     teacherFrame.period_selected(teacherFrame.period_menu.get())
 
@@ -282,13 +261,13 @@ def tempResetArrivalTimes():
 def factory_reset():
     print('factory resetting')
     #with db.cursor() as factory_curs:
-    #callMultiple(factory_curs,"""TRUNCATE TABLE PERIODS""", None, False, False)
-    #callMultiple(factory_curs,"""TRUNCATE TABLE ACTIVITY""", None, False, False)
-    #callMultiple(factory_curs,"""TRUNCATE TABLE SCANS""", None, False, False)
-    #callMultiple(factory_curs,"""TRUNCATE TABLE MASTER""", None, False, False)
-    #callMultiple(factory_curs,"""TRUNCATE TABLE TEACHERS""", None, False, False)
-    #callMultiple(factory_curs,"""INSERT INTO TEACHERS (A_B, ACTIVITY, SCHEDULE, teacherPW) values ('A', 0, "", "")""", None, False, False)
-    #os.execl(sys.executable, sys.executable, *sys.argv)
+    #callMultiple(factory_curs,"TRUNCATE TABLE PERIODS", None, False, False)
+    #callMultiple(factory_curs,"TRUNCATE TABLE ACTIVITY", None, False, False)
+    #callMultiple(factory_curs,"TRUNCATE TABLE SCANS", None, False, False)
+    #callMultiple(factory_curs,"TRUNCATE TABLE MASTER", None, False, False)
+    #callMultiple(factory_curs,"TRUNCATE TABLE TEACHERS", None, False, False)
+    #callMultiple(factory_curs,"INSERT INTO TEACHERS (A_B, ACTIVITY, SCHEDULE, teacherPW) values ('A', 0, '', '')", None, False, False)
+
 
 #TIMING FUNCTIONS
 def newDay():
@@ -486,10 +465,10 @@ def checkIN():
                                                 window.after(0, warning_confirmation.config, "double scan")
                                             else: #IF THEY ARE IN THE CURRENT PERIOD ON THIS DAY AND HAVEN'T CHECKED IN YET
                                                 status = getAttendance(scan_time, period_ID, checkInCursor)
-                                                #callMultiple(checkInCursor, """INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
+                                                callMultiple(checkInCursor, """INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
                                                 window.after(0, lambda i0 = scan_time, i1 = ID, i2 = status: successScan(i0, i1, i2))
                                                 #window.after(0, lambda i0 = period_ID: studentListPop(i0))
-                                                #window.after(0, tabSwap, 2)
+                                                window.after(0, tabSwap, 1)
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
                                             continue
                                     if notInPeriod:
