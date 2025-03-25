@@ -3,6 +3,8 @@ import subprocess
 import os
 import threading
 from functools import partial
+import math
+import random
 
 #RFID SCANNER IMPORTS
 from PiicoDev_RFID import PiicoDev_RFID
