@@ -245,7 +245,7 @@ def refresh_teacher_frame():
 def close_success_scan():
     time.sleep(2)
     window.after(0, lambda: successFrame.lower())
-    window.after(1, tabSwap, 1)
+    #window.after(1, tabSwap, 1)
 
 #CHANGING DATA FUNCTIONS
 def tempResetArrivalTimes():
