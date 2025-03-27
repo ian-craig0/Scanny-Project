@@ -86,20 +86,7 @@ def getPeriodsToday(periods):
     flattened_periods = [item[0] for item in periods]
 
     # Build the query with the correct number of placeholders for the IN clause
-    query = """
-    SELECT p.period_ID 
-    FROM periods p 
-    JOIN schedule_days sd ON sd.schedule_ID = p.schedule_ID 
-    WHERE sd.schedule_ID = %s 
-        AND sd.weekday = %s 
-        AND p.period_ID IN ({})
-        AND p.block_val = (
-            SELECT daytype 
-            FROM schedule_days 
-            WHERE schedule_ID = %s 
-            AND weekday = %s
-        )
-    """.format(",".join(["%s"] * len(flattened_periods)))
+    query = """SELECT p.period_ID FROM periods p JOIN schedule_days sd ON sd.schedule_ID = p.schedule_ID WHERE sd.schedule_ID = %s AND sd.weekday = %s AND p.period_ID IN ({}) AND p.block_val = (SELECT daytype FROM schedule_days WHERE schedule_ID = %s AND weekday = %s)""".format(",".join(["%s"] * len(flattened_periods)))
 
     # Set up parameters: schedule ID, weekday, the list of period IDs, schedule ID and weekday for the subquery
     params = (get_active_schedule_ID(), date.today().weekday(), *flattened_periods, get_active_schedule_ID(), date.today().weekday())
@@ -116,7 +103,7 @@ def get_current_Period_ID(time):
     if not daytype: #CHECK IF THE SCHEDULE IS RUNNING TODAY
         return daytype
     else:
-        period_ID = execute_query("SELECT period_ID FROM periods WHERE schedule_ID = %s AND block_val = %s AND start_time <= %s AND end_time > %s", (get_active_schedule_ID(), daytype, time, time),True)
+        period_ID = execute_query("SELECT period_ID FROM periods WHERE schedule_ID = %s AND block_val = %s AND start_time <= %s AND end_time > %s", (get_active_schedule_ID(), daytype, time, time), True)
         #IF THERE IS A PERIOD AT THE CURRENT TIME
         if period_ID:
             return period_ID[0]
