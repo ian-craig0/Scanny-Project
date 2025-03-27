@@ -63,8 +63,8 @@ def execute_query(query, params=None, fetchone=False, select=True, exc_many = Fa
         result = cursor.fetchone() if select and fetchone else cursor.fetchall() if select else None
         cursor.close()
         return result
-    except Exception as err:
-        raise Exception(f"Database query failed: {err}") from err
+    except:
+        raise Exception(f"Database query failed")
     finally:
         conn.close()
 
@@ -337,15 +337,16 @@ ORDER BY sc.status ASC, sn.first_name ASC"""
 def periodListPop():
     for widget in periodList.winfo_children():
         widget.destroy()
-    query = """SELECT p.period_ID FROM periods p WHERE p.schedule_ID = %s AND p.block_val = (SELECT sd.daytype FROM schedule_days sd WHERE sd.schedule_ID = %s AND sd.weekday = %s) ORDER BY p.start_time ASC"""
+    query = """SELECT p.period_ID, p.name FROM periods p WHERE p.schedule_ID = %s AND p.block_val = (SELECT sd.daytype FROM schedule_days sd WHERE sd.schedule_ID = %s AND sd.weekday = %s) ORDER BY p.start_time ASC"""
     schedule_ID = get_active_schedule_ID()
     periods = execute_query(query, (schedule_ID, schedule_ID, date.today().weekday()))
     if periods:
-        for period in periods:
+        for period_info in periods:
+            period_ID, period_name = period_info
             def command(per):
                 tabSwap(2)
                 studentListPop(per)
-            ctk.CTkButton(periodList,border_width=4,bg_color='white',text=(f"{execute_query('select name from periods where period_ID = %s', (period,), True)[0]}"), border_color='white', font=('Space Grotesk Medium', 20),command=lambda i0 = period: command(i0)).pack(fill = 'both', expand = True)
+            ctk.CTkButton(periodList,border_width=4,bg_color='white',text=(f"{period_name}"), border_color='white', font=('Space Grotesk Medium', 20),command=lambda i0 = period_ID: command(i0)).pack(fill = 'both', expand = True)
     else:
         ctk.CTkLabel(periodList, text='No Periods to Display...', font=('Space Grotesk', 30), text_color='gray').place(relx=0.5, rely=0.5, anchor='center')
 
