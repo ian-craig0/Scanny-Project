@@ -64,7 +64,7 @@ def execute_query(query, params=None, fetchone=False, select=True, exc_many = Fa
         cursor.close()
         return result
     except Exception as err:
-        raise Exception(f"Database query failed: {e}") from err
+        raise Exception(f"Database query failed: {err}") from err
     finally:
         conn.close()
 
