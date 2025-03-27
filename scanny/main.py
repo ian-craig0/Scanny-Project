@@ -50,7 +50,7 @@ master_macID = "04:F7:2C:0A:68:19:90"
 database_cfg = {"host": "localhost", "user": "root", "password": "seaside", "database": "scanner","autocommit": True}
 
 #Connection Pool Setup
-cnxpool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **dbconfig)
+cnxpool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **database_cfg)
 
 def execute_query(query, params=None, fetchone=False, select=True, exc_many = False):
     conn = cnxpool.get_connection()
