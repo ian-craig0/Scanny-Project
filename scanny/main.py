@@ -13,7 +13,7 @@ from PiicoDev_Unified import sleep_ms
 #MYSQL IMPORTS
 import MySQLdb
 import mysql.connector
-import mysql.connector.pooling
+from mysql.connector import pooling
 from contextlib import closing
 
 #TIMING IMPORTS
@@ -29,9 +29,6 @@ from tkinter.ttk import *
 import customtkinter as ctk
 import glob
 from PIL import Image, ImageTk
-
-#MYSQL DATABASE INITIALIZATION
-db = MySQLdb.connect(host='localhost',user='root',passwd='seaside',db='scanner',autocommit=True)  #allows queries
 
 #GUI CREATION --------------------------------------------
 #Window Setup
@@ -50,110 +47,42 @@ rfid = PiicoDev_RFID()
 master_macID = "04:F7:2C:0A:68:19:90"
 
 #DATA BASE FUNCTIONS
-def displayError(error):
-    warning_confirmation.warning_confirmation_dict["unexpected error"][1] = str(error)
-    warning_confirmation.config("unexpected error")
+database_cfg = {"host": "localhost", "user": "root", "password": "seaside", "database": "scanner","autocommit": True}
 
-def reconnect():
-    print("reconnected!")
-    global db
+#Connection Pool Setup
+cnxpool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **dbconfig)
+
+def execute_query(query, params=None, fetchone=False, select=True, exc_many = False):
+    conn = cnxpool.get_connection()
     try:
-        db = MySQLdb.connect(host='localhost',user='root',passwd='seaside',db='scanner',autocommit=True)
-    except MySQLdb.OperationalError as err:
-        db = None  # Clear the db variable to indicate failed reconnection
-
-def callMultiple(cursor, query, params=None, fetchone=False, get=True, retries=4):
-    """Execute a query with automatic retry and reconnection handling."""
-    attempts = 0
-    while attempts < retries:
-        try:
+        cursor = conn.cursor()
+        if exc_many:
+            cursor.executemany(query, params)
+        else:
             cursor.execute(query, params)
-            if get:
-                return cursor.fetchone() if fetchone else cursor.fetchall()
-            else:
-                return None  # For non-fetch queries, simply exit after execution
-        except MySQLdb.OperationalError as err:
-            if err.args[0] == 2006:  # MySQL server has gone away
-                # Attempt to reconnect and reinitialize the cursor
-                reconnect()
-                if db is None:
-                    raise ConnectionError("Database reconnection failed.")  # Indicate failure
-                cursor = db.cursor()  # Refresh the cursor after reconnecting
-            else:
-                if attempts == retries - 1:
-                    raise err
-        except mysql.connector.Error as err:
-            if attempts == retries - 1:
-                raise err
-
-        # Increment attempts and wait before retrying
-        attempts += 1
-        time.sleep(1)  # Shorter sleep time to retry faster
-
-
-#MYSQL TABLE GETTER FUNCTIONS
-#BLOCK SCHEDULE GETTER
-def getFromSchedule_Days(query, params=None,fetchone=False,get=True):
-    with closing(db.cursor()) as schedule_days_curs:
-        return callMultiple(schedule_days_curs, query, params, fetchone, get)
-
-#PERIODS GETTER
-def getFromPeriods(query, params=None,fetchone=False,get=True):
-    with closing(db.cursor()) as periods_curs:
-        return callMultiple(periods_curs, query, params, fetchone, get)
-
-#SCANS GETTER
-def getFromScans(query, params=None,fetchone=False,get=True):
-    with closing(db.cursor()) as scans_curs:
-        return callMultiple(scans_curs, query, params, fetchone, get)
-
-#SCHEDULES GETTER
-def getFromSchedules(query, params=None,fetchone=False,get=True):
-    with closing(db.cursor()) as schedules_curs:
-        return callMultiple(schedules_curs, query, params, fetchone, get)
-
-#STUDENT NAMES GETTER
-def getFromStudent_Names(query, params=None,fetchone=False,get=True):
-    with closing(db.cursor()) as student_name_curs:
-        return callMultiple(student_name_curs, query, params, fetchone, get)
-
-#STUDENT PERIODS GETTER
-def getFromStudent_Periods(query, params=None,fetchone=False,get=True):
-    with closing(db.cursor()) as student_period_curs:
-        return callMultiple(student_period_curs, query, params, fetchone, get)
-
-#CONTROL GETTER
-def getFromSystem_Control(query, params=None,fetchone=False,get=True):
-    with closing(db.cursor()) as system_control_curs:
-        return callMultiple(system_control_curs, query, params, fetchone, get)
-
-
-
-
+        result = cursor.fetchone() if select and fetchone else cursor.fetchall() if select else None
+        cursor.close()
+        return result
+    except Exception as err:
+        raise Exception(f"Database query failed: {e}") from err
+    finally:
+        conn.close()
 
 
 
 #DATABASE GETTER FUNCTIONS
 def get_active_schedule_ID():
-    active_schedule = getFromSystem_Control("select active_schedule_ID from system_control", None, True)
+    active_schedule = execute_query("select active_schedule_ID from system_control", None, True)
     return active_schedule[0] if active_schedule else -1
 
 def getFirstLastName(macID):
-    firstLast = getFromStudent_Names("""select first_name, last_name from student_names where macID = %s""",(macID,),True)
+    firstLast = execute_query("""select first_name, last_name from student_names where macID = %s""",(macID,),True)
     return firstLast[0], firstLast[1]
-
-def getNamesFromPeriod(period_ID):
-    studentNames = getFromStudent_Names("""SELECT s.macID, s.first_name, s.last_name FROM student_names s JOIN student_periods p ON s.macID = p.macID WHERE p.period_ID = %s""",(period_ID,))
-    studentDictionary = {}
-    for i in studentNames:
-        studentDictionary[(i[1] + " " + i[2])] = i[0]
-    return studentDictionary
-
 
 
 
 #CHECK IN FUNCTIONS
-def getPeriodsToday(periods, cursor):
+def getPeriodsToday(periods):
     flattened_periods = [item[0] for item in periods]
 
     # Build the query with the correct number of placeholders for the IN clause
@@ -176,25 +105,25 @@ def getPeriodsToday(periods, cursor):
     params = (get_active_schedule_ID(), date.today().weekday(), *flattened_periods, get_active_schedule_ID(), date.today().weekday())
 
     # Execute the query
-    periods_today = callMultiple(cursor, query, params)
+    periods_today = execute_query(query, params)
 
     # Return the flattened result
     return [item[0] for item in periods_today]
 
-def get_current_Period_ID(time, cursor):
+def get_current_Period_ID(time):
     # RETURNS NOTHING IF NO SCHEDULE THAT DAY, RETURNS '-' if there is no class at that time, RETURNS period_ID if there is a class
-    daytype = callMultiple(cursor,"select daytype from schedule_days where schedule_ID = %s and weekday = %s", (get_active_schedule_ID(), date.today().weekday()), True)
+    daytype = execute_query("select daytype from schedule_days where schedule_ID = %s and weekday = %s", (get_active_schedule_ID(), date.today().weekday()), True)
     if not daytype: #CHECK IF THE SCHEDULE IS RUNNING TODAY
         return daytype
     else:
-        period_ID = callMultiple(cursor,"SELECT period_ID FROM periods WHERE schedule_ID = %s AND block_val = %s AND start_time <= %s AND end_time > %s", (get_active_schedule_ID(), daytype, time, time),True)
+        period_ID = execute_query("SELECT period_ID FROM periods WHERE schedule_ID = %s AND block_val = %s AND start_time <= %s AND end_time > %s", (get_active_schedule_ID(), daytype, time, time),True)
         #IF THERE IS A PERIOD AT THE CURRENT TIME
         if period_ID:
             return period_ID[0]
         else:
             return "-"
 
-def getAttendance(time, period_ID, cursor):
+def getAttendance(time, period_ID):
     # Get the active schedule ID in Python
     schedule_ID = get_active_schedule_ID()
     query = """
@@ -210,7 +139,7 @@ def getAttendance(time, period_ID, cursor):
     """
 
     # Pass `time`, `time`, `schedule_ID`, and `period_ID` as parameters to the query
-    return callMultiple(cursor, query, (time, time, schedule_ID, period_ID), True)[0]
+    return execute_query(query, (time, time, schedule_ID, period_ID), True)[0]
 
 def handle_settings_edit(ID, reset_oldMACID):
     """Runs on the main thread - safe for GUI operations"""
@@ -219,7 +148,7 @@ def handle_settings_edit(ID, reset_oldMACID):
 
     if warning_confirmation.current_key == "reset ID":
         # Database query can stay here if fast, or move to background thread
-        student_exists = getFromStudent_Names(
+        student_exists = execute_query(
             "SELECT first_name FROM student_names WHERE macID = %s", (ID,), True)
         
         if student_exists:
@@ -230,11 +159,11 @@ def handle_settings_edit(ID, reset_oldMACID):
         else:
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
-            getFromStudent_Names("UPDATE student_names SET macID = %s WHERE macID = %s", (new_id, old_id), False, False)
+            execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (new_id, old_id), False, False)
             window.after(0, refresh_teacher_frame)
             
     elif currentTAB != 6:
-        if getFromStudent_Names("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
+        if execute_query("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
             window.after(0, lambda i0 = ID: editStudentData(i0))
 
 def refresh_teacher_frame():
@@ -264,19 +193,19 @@ def tempResetArrivalTimes():
 def factory_reset():
     print('factory resetting')
     #with db.cursor() as factory_curs:
-    #callMultiple(factory_curs,"TRUNCATE TABLE PERIODS", None, False, False)
-    #callMultiple(factory_curs,"TRUNCATE TABLE ACTIVITY", None, False, False)
-    #callMultiple(factory_curs,"TRUNCATE TABLE SCANS", None, False, False)
-    #callMultiple(factory_curs,"TRUNCATE TABLE MASTER", None, False, False)
-    #callMultiple(factory_curs,"TRUNCATE TABLE TEACHERS", None, False, False)
-    #callMultiple(factory_curs,"INSERT INTO TEACHERS (A_B, ACTIVITY, SCHEDULE, teacherPW) values ('A', 0, '', '')", None, False, False)
+    #execute_query(factory_curs,"TRUNCATE TABLE PERIODS", None, False, False)
+    #execute_query(factory_curs,"TRUNCATE TABLE ACTIVITY", None, False, False)
+    #execute_query(factory_curs,"TRUNCATE TABLE SCANS", None, False, False)
+    #execute_query(factory_curs,"TRUNCATE TABLE MASTER", None, False, False)
+    #execute_query(factory_curs,"TRUNCATE TABLE TEACHERS", None, False, False)
+    #execute_query(factory_curs,"INSERT INTO TEACHERS (A_B, ACTIVITY, SCHEDULE, teacherPW) values ('A', 0, '', '')", None, False, False)
 
 
 #TIMING FUNCTIONS
 def newDay():
     #UPDATE A/B DAY
     day = date.today().weekday()
-    if getFromSchedule_Days("select dynamic_daytype from schedule_days where schedule_ID = %s and weekday = %s and dynamic_daytype = True", (get_active_schedule_ID(), day), True):
+    if execute_query("select dynamic_daytype from schedule_days where schedule_ID = %s and weekday = %s and dynamic_daytype = True", (get_active_schedule_ID(), day), True):
         display_popup(fridayperiodframe)
         teacherFrame.toggle_dynamic_button(True)
     else:
@@ -330,8 +259,8 @@ AND s.scan_date = CURDATE()
 WHERE sp.period_ID = %s
 AND s.macID IS NULL;"""
     active_schedule_ID = get_active_schedule_ID()
-    starting_period = getFromPeriods(starting_period_query, (date.today().weekday(), time, active_schedule_ID), True)
-    ending_period = getFromPeriods(ending_period_query, (date.today().weekday(), time, active_schedule_ID), True)
+    starting_period = execute_query(starting_period_query, (date.today().weekday(), time, active_schedule_ID), True)
+    ending_period = execute_query(ending_period_query, (date.today().weekday(), time, active_schedule_ID), True)
     if starting_period:
         if currentTAB == 1 or currentTAB == 2:
             tabSwap(2)
@@ -340,10 +269,9 @@ AND s.macID IS NULL;"""
     if ending_period:
         tabSwap(1)
         ending_per_ID = ending_period[0]
-        absent_students = getFromScans(missing_student_query, (ending_per_ID, ending_per_ID))
+        absent_students = execute_query(missing_student_query, (ending_per_ID, ending_per_ID))
         absent_scan_data = [(ending_per_ID, active_schedule_ID, macID[0], curr_date, -1, 0, None) for macID in absent_students]
-        with closing(db.cursor()) as absent_curs:
-            absent_curs.executemany("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", absent_scan_data)
+        execute_query("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", absent_scan_data, False, False, True)
 
 #TIME LOOP
 prevDate = date.today() - timedelta(days=1)
@@ -368,43 +296,42 @@ def timeFunc():
 #STUDENTLIST POPULATION
 def studentListPop(period_ID):
     global sHeight, sWidth
-    with closing(db.cursor()) as studentListCursor:
-        #CLEAR THE STUDENTLIST FRAME
-        studentList.configure(label_text=callMultiple(studentListCursor, "select name from periods where period_ID = %s", (period_ID,), True)[0])
-        for widget in studentList.winfo_children():
-            if widget.winfo_exists():
-                widget.destroy()
-        query = """SELECT sp.macID, sn.first_name, sn.last_name, sc.status, sc.scan_time
+    #CLEAR THE STUDENTLIST FRAME
+    studentList.configure(label_text=execute_query("select name from periods where period_ID = %s", (period_ID,), True)[0])
+    for widget in studentList.winfo_children():
+        if widget.winfo_exists():
+            widget.destroy()
+    query = """SELECT sp.macID, sn.first_name, sn.last_name, sc.status, sc.scan_time
 FROM student_periods sp
 JOIN student_names sn ON sp.macID = sn.macID
 LEFT JOIN scans sc ON sp.macID = sc.macID 
-    AND sc.scan_date = CURDATE() 
-    AND sc.period_ID = %s
+AND sc.scan_date = CURDATE() 
+AND sc.period_ID = %s
 WHERE sp.period_ID = %s
 ORDER BY sc.status ASC, sn.first_name ASC"""
-        students = callMultiple(studentListCursor, query, (period_ID, period_ID))
-        if students:
-            for index, student in enumerate(students):
-                macID, first_name, last_name, status, scan_time = student
+    students = execute_query(query, (period_ID, period_ID))
+    if students:
+        for index, student in enumerate(students):
+            macID, first_name, last_name, status, scan_time = student
 
-                student_dict = {2: ('green', "check.png", (40,30), 5, 5),
-                                1: ('orange', "dash.png", (40,40), 4, 2),
-                                0: ('red', "x.png", (30,30), 10,2)}
+            student_dict = {2: ('green', "check.png", (40,30), 5, 5),
+                            1: ('orange', "dash.png", (40,40), 4, 2),
+                            0: ('red', "x.png", (30,30), 10,2)}
 
-                color, img, size, padx, pady = student_dict.get(status if status else 0)
+            color, img, size, padx, pady = student_dict.get(status if status else 0)
 
-                studentFrame = ctk.CTkFrame(studentList, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
-                studentFrame.pack_propagate(0)
-                image = ctk.CTkImage(light_image=Image.open(script_directory + r"/images/" + img), size = size)
-                ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15)).pack(side='left', padx=5,pady=2)
-                ctk.CTkLabel(studentFrame, image= image, text='', fg_color='transparent').pack(padx=padx,pady=pady,side='right')
+            studentFrame = ctk.CTkFrame(studentList, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
+            studentFrame.pack_propagate(0)
+            image = ctk.CTkImage(light_image=Image.open(script_directory + r"/images/" + img), size = size)
+            ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15)).pack(side='left', padx=5,pady=2)
+            ctk.CTkLabel(studentFrame, image= image, text='', fg_color='transparent').pack(padx=padx,pady=pady,side='right')
 
-                # Calculate row and column dynamically
-                row = index // 2  # Every two students per row
-                column = index % 2
+            # Calculate row and column dynamically
+            row = index // 2  # Every two students per row
+            column = index % 2
 
-                studentFrame.grid(row=row, column=column, pady=5, padx=3, sticky='nsw')
-        studentList._parent_canvas.yview_moveto(0)
+            studentFrame.grid(row=row, column=column, pady=5, padx=3, sticky='nsw')
+    studentList._parent_canvas.yview_moveto(0)
 
 #PERIODLIST UPDATING
 def periodListPop():
@@ -412,28 +339,20 @@ def periodListPop():
         widget.destroy()
     query = """SELECT p.period_ID FROM periods p WHERE p.schedule_ID = %s AND p.block_val = (SELECT sd.daytype FROM schedule_days sd WHERE sd.schedule_ID = %s AND sd.weekday = %s) ORDER BY p.start_time ASC"""
     schedule_ID = get_active_schedule_ID()
-    with closing(db.cursor()) as period_pop_curs:
-        periods = callMultiple(period_pop_curs, query, (schedule_ID, schedule_ID, date.today().weekday()))
-        if periods:
-            for period in periods:
-                def command(per):
-                    tabSwap(2)
-                    studentListPop(per)
-                ctk.CTkButton(periodList,border_width=4,bg_color='white',text=(f"{callMultiple(period_pop_curs, 'select name from periods where period_ID = %s', (period,), True)[0]}"), border_color='white', font=('Space Grotesk Medium', 20),command=lambda i0 = period: command(i0)).pack(fill = 'both', expand = True)
-        else:
-            ctk.CTkLabel(periodList, text='No Periods to Display...', font=('Space Grotesk', 30), text_color='gray').place(relx=0.5, rely=0.5, anchor='center')
-
-ten_after = time_to_minutes(strftime("%H:%M")) + 10
+    periods = execute_query(query, (schedule_ID, schedule_ID, date.today().weekday()))
+    if periods:
+        for period in periods:
+            def command(per):
+                tabSwap(2)
+                studentListPop(per)
+            ctk.CTkButton(periodList,border_width=4,bg_color='white',text=(f"{execute_query('select name from periods where period_ID = %s', (period,), True)[0]}"), border_color='white', font=('Space Grotesk Medium', 20),command=lambda i0 = period: command(i0)).pack(fill = 'both', expand = True)
+    else:
+        ctk.CTkLabel(periodList, text='No Periods to Display...', font=('Space Grotesk', 30), text_color='gray').place(relx=0.5, rely=0.5, anchor='center')
 
 #CHECK IN FUNCTION
 def checkIN():
     global currentPopup, ten_after, current_time, currentTAB, reset_oldMACID
     while True:
-        if ten_after == current_time:
-            with closing(db.cursor()) as alive_curs:
-                # Execute a simple query to keep the connection alive
-                result = callMultiple(alive_curs, """SELECT active_schedule_ID FROM system_control""", None, True)
-            ten_after = current_time + 10
         if rfid.tagPresent(): #WHEN A MACID IS SCANNED!
             scan_date = strftime("%Y-%m-%d")
             scan_time = time_to_minutes(strftime("%H:%M"))
@@ -446,29 +365,28 @@ def checkIN():
                         sleep_ms(3000)
                 elif currentTAB == 1 or currentTAB == 2:
                     if currentPopup != warning_confirmation and currentPopup !=fridayperiodframe:
-                        checkInCursor = db.cursor()
-                        studentPeriodList = callMultiple(checkInCursor, """SELECT period_ID from student_periods WHERE macID = %s""", (ID,))
+                        studentPeriodList = execute_query("""SELECT period_ID from student_periods WHERE macID = %s""", (ID,))
                         if studentPeriodList: #CHECK IF A PERIOD IS RETURNED (IF THEY'RE IN THE MASTER LIST)
                             if get_active_schedule_ID(): #CHECK IF THERE IS A SELECTED ACTIVE SCHEDULE
-                                current_period = get_current_Period_ID(scan_time, checkInCursor)
+                                current_period = get_current_Period_ID(scan_time)
                                 if not current_period: #NO CLASS ON THIS DAY
                                     window.after(0, warning_confirmation.config, "no schedule today")
                                 elif current_period == "-": #NO CLASS AT THIS TIME ON THIS VALID DAY
                                     window.after(0, warning_confirmation.config, "no class currently")
                                 else: #ONLY RUNS IF THERE IS A PERIOD TODAY!
                                     #GET LIST OF PERIODS FOR THIS SPECIFIC DAY
-                                    periods_today = getPeriodsToday(studentPeriodList, checkInCursor) #GET THE STUDENT PERIODS FOR THE DAY
+                                    periods_today = getPeriodsToday(studentPeriodList) #GET THE STUDENT PERIODS FOR THE DAY
                                     notInPeriod = True
                                     #ITERATE THROUGH EACH PERIOD THAT THIS STUDENT IS IN FOR THIS DAY
                                     for period_ID in periods_today:
                                         if period_ID == current_period: #IF ONE OF THEIR PERIODS IS MATCHING WITH THE CURRENT PERIOD
                                             notInPeriod = False
                                             #CHECK IF THERE IS A SCAN ALREADY FOR TODAY, FOR THE STUDENT, IN THE CURRENT PERIOD, FOR THE ACTIVE SCHEDULE
-                                            if callMultiple(checkInCursor, "SELECT 1 FROM scans WHERE schedule_ID = %s AND period_ID = %s AND macID = %s AND scan_date = %s LIMIT 1", (get_active_schedule_ID(), period_ID, ID, scan_date), True):
+                                            if execute_query("SELECT 1 FROM scans WHERE schedule_ID = %s AND period_ID = %s AND macID = %s AND scan_date = %s LIMIT 1", (get_active_schedule_ID(), period_ID, ID, scan_date), True):
                                                 window.after(0, warning_confirmation.config, "double scan")
                                             else: #IF THEY ARE IN THE CURRENT PERIOD ON THIS DAY AND HAVEN'T CHECKED IN YET
-                                                status = getAttendance(scan_time, period_ID, checkInCursor)
-                                                callMultiple(checkInCursor, """INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
+                                                status = getAttendance(scan_time, period_ID)
+                                                execute_query("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
                                                 window.after(0, lambda i0 = scan_time, i1 = ID, i2 = status: successScan(i0, i1, i2))
                                                 #window.after(0, lambda i0 = period_ID: studentListPop(i0))
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
@@ -482,7 +400,6 @@ def checkIN():
                             #GET STUDENT DATA WITH POP UP
                             getStudentInfoFrame.setMACID(ID)
                             window.after(0, tabSwap, 6)
-                        checkInCursor.close()
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
                     window.after(0, lambda i0 = ID, i1 = reset_oldMACID: handle_settings_edit(i0, i1))
                 sleep_ms(100)
@@ -1084,7 +1001,7 @@ class setupClass(ctk.CTkFrame):
     def populate_schedule_list(self):
         for widget in self.SL_scrollable_frame.winfo_children():
             widget.destroy()
-        schedules = getFromSchedules("select schedule_ID, name from schedules ORDER by name ASC")
+        schedules = execute_query("select schedule_ID, name from schedules ORDER by name ASC")
         if schedules:
             for index, schedule_info in enumerate(schedules):
                 schedule_frame = ctk.CTkFrame(self.SL_scrollable_frame, height= 60,fg_color="#1f6aa5", bg_color='white', border_width=4, border_color='white')
@@ -1106,7 +1023,7 @@ class setupClass(ctk.CTkFrame):
             widget.destroy()
         if name:
             self.PL_scrollable_frame.configure(label_text=f"Edit Periods: {name}")
-        periods = getFromPeriods("select period_ID, name, block_val from periods where schedule_ID = %s ORDER by block_val ASC, start_time ASC", (schedule_ID,))
+        periods = execute_query("select period_ID, name, block_val from periods where schedule_ID = %s ORDER by block_val ASC, start_time ASC", (schedule_ID,))
         for index, period_info in enumerate(periods):
             period_frame = ctk.CTkFrame(self.PL_scrollable_frame, height= 60,fg_color="#1f6aa5", bg_color='white', border_width=4, border_color='white')
             period_frame.grid(row=index, column=0, sticky='ew', padx=5, pady=5)
@@ -1127,52 +1044,51 @@ class setupClass(ctk.CTkFrame):
         self.PI_LF_daytype_label.pack_forget()
         self.PI_LF_daytype_segmented_button.pack_forget()
         self.PI_LF_submit_button.pack_forget()
-        with closing(db.cursor()) as get_period_info_curs:
-            if period_ID:
-                self.PI_LF_edit_students_button.pack(side='top', pady=10)
-            if callMultiple(get_period_info_curs,"select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0] == 1: #IF ITS BLOCK SCHEDULE
-                self.PI_LF_daytype_label.pack(side='top',pady=(10,5))
-                self.PI_LF_daytype_segmented_button.pack(side='top',pady=(10,20))
-                if period_ID: #IF THE PERIOD ALREADY EXISTS
-                    #SET SEGMENTED BUTTON VALUE
-                    self.PI_LF_daytype_segmented_button.set(callMultiple(get_period_info_curs,"select block_val from periods where period_ID = %s", (period_ID,), True)[0])
-            self.PI_LF_submit_button.configure(command = lambda: self.submit_period(schedule_ID, period_ID))
-            self.PI_LF_submit_button.pack(side='top',pady=(20,10))
+        if period_ID:
+            self.PI_LF_edit_students_button.pack(side='top', pady=10)
+        if execute_query("select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0] == 1: #IF ITS BLOCK SCHEDULE
+            self.PI_LF_daytype_label.pack(side='top',pady=(10,5))
+            self.PI_LF_daytype_segmented_button.pack(side='top',pady=(10,20))
+            if period_ID: #IF THE PERIOD ALREADY EXISTS
+                #SET SEGMENTED BUTTON VALUE
+                self.PI_LF_daytype_segmented_button.set(execute_query("select block_val from periods where period_ID = %s", (period_ID,), True)[0])
+        self.PI_LF_submit_button.configure(command = lambda: self.submit_period(schedule_ID, period_ID))
+        self.PI_LF_submit_button.pack(side='top',pady=(20,10))
 
-            if period_ID: #IF THE PERIOD EXISTS
-                #SET LABELS
-                name = callMultiple(get_period_info_curs,"select name from periods where period_ID = %s", (period_ID,), True)[0]
-                self.PTF_title_label.configure(text='Edit Period: ' + name)
-                self.PI_LF_submit_button.configure(text='Submit Edits')
-                #SET PERIOD NAME
-                self.PI_LF_period_entry.delete(0, 'end')
-                self.PI_LF_period_entry.insert(0, name)
-                start_time, end_time, late_var = callMultiple(get_period_info_curs, "select start_time, end_time, late_var from periods where period_ID = %s", (period_ID,), True)
+        if period_ID: #IF THE PERIOD EXISTS
+            #SET LABELS
+            name = execute_query("select name from periods where period_ID = %s", (period_ID,), True)[0]
+            self.PTF_title_label.configure(text='Edit Period: ' + name)
+            self.PI_LF_submit_button.configure(text='Submit Edits')
+            #SET PERIOD NAME
+            self.PI_LF_period_entry.delete(0, 'end')
+            self.PI_LF_period_entry.insert(0, name)
+            start_time, end_time, late_var = execute_query("select start_time, end_time, late_var from periods where period_ID = %s", (period_ID,), True)
 
-                #SET EDIT STUDENT BUTTON
-                self.PI_LF_edit_students_button.configure(command=lambda: self.display_student_assignment_frame(period_ID, name))
+            #SET EDIT STUDENT BUTTON
+            self.PI_LF_edit_students_button.configure(command=lambda: self.display_student_assignment_frame(period_ID, name))
 
-                #SET TIMING VALUES
-                self.PI_RF_start_hour_var.set(f"{(start_time//60):02d}")
-                self.PI_RF_start_minute_var.set(f"{(start_time%60):02d}")
-                self.PI_RF_end_hour_var.set(f"{(end_time//60):02d}")
-                self.PI_RF_end_minute_var.set(f"{(end_time%60):02d}")
-                self.PI_RF_tardy_minute_var.set(f"{(late_var):02d}")
-            else:
-                self.PI_LF_period_entry.delete(0, 'end')
-                self.PI_LF_daytype_segmented_button.set("")
-                self.PI_RF_start_hour_var.set("12")
-                self.PI_RF_start_minute_var.set("00")
-                self.PI_RF_end_hour_var.set("12")
-                self.PI_RF_end_minute_var.set("00")
-                self.PI_RF_tardy_minute_var.set('05')
-                self.PTF_title_label.configure(text='Create New Period')
-                self.PI_LF_submit_button.configure(text='+ Create Period +')
+            #SET TIMING VALUES
+            self.PI_RF_start_hour_var.set(f"{(start_time//60):02d}")
+            self.PI_RF_start_minute_var.set(f"{(start_time%60):02d}")
+            self.PI_RF_end_hour_var.set(f"{(end_time//60):02d}")
+            self.PI_RF_end_minute_var.set(f"{(end_time%60):02d}")
+            self.PI_RF_tardy_minute_var.set(f"{(late_var):02d}")
+        else:
+            self.PI_LF_period_entry.delete(0, 'end')
+            self.PI_LF_daytype_segmented_button.set("")
+            self.PI_RF_start_hour_var.set("12")
+            self.PI_RF_start_minute_var.set("00")
+            self.PI_RF_end_hour_var.set("12")
+            self.PI_RF_end_minute_var.set("00")
+            self.PI_RF_tardy_minute_var.set('05')
+            self.PTF_title_label.configure(text='Create New Period')
+            self.PI_LF_submit_button.configure(text='+ Create Period +')
 
     def populate_weekday_frame(self, schedule_name):
         schedule_ID = self.SW_schedule_dict.get(schedule_name)
-        weekday_info = {row[0]: (row[1], row[2]) for row in getFromSchedule_Days("select weekday, dynamic_daytype, daytype from schedule_days where schedule_ID = %s ORDER BY weekday ASC", (schedule_ID,))}
-        self.SW_schedule_type = getFromSchedules("select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
+        weekday_info = {row[0]: (row[1], row[2]) for row in execute_query("select weekday, dynamic_daytype, daytype from schedule_days where schedule_ID = %s ORDER BY weekday ASC", (schedule_ID,))}
+        self.SW_schedule_type = execute_query("select type from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
         self.clear_weekday_frame()
         edit = False
         if weekday_info: #IF THIS SCHEDULE ALREADY HAS INFORMATION SAVED, POPULATE IT
@@ -1194,7 +1110,7 @@ class setupClass(ctk.CTkFrame):
             if not isinstance(widget, ctk.CTkButton):
                 widget.destroy()
         self.SA_MSF_student_dict = {}
-        student_data = getFromStudent_Names("select * from student_names ORDER by first_name ASC")
+        student_data = execute_query("select * from student_names ORDER by first_name ASC")
         for index, student in enumerate(student_data, start=1):
             macID, first_name, last_name = student
             name = f"{first_name} {last_name}"
@@ -1215,7 +1131,7 @@ class setupClass(ctk.CTkFrame):
             if not isinstance(widget, ctk.CTkButton):
                 widget.destroy()
         self.SA_PSF_student_dict = {}
-        student_data = getFromStudent_Periods("select sp.macID, sn.first_name, sn.last_name from student_periods sp join student_names sn on sp.macID = sn.macID where sp.period_ID = %s ORDER by sn.first_name ASC", (period_ID,))
+        student_data = execute_query("select sp.macID, sn.first_name, sn.last_name from student_periods sp join student_names sn on sp.macID = sn.macID where sp.period_ID = %s ORDER by sn.first_name ASC", (period_ID,))
         for index, student in enumerate(student_data, start = 1):
             macID, first_name, last_name = student
             name = f"{first_name} {last_name}"
@@ -1241,25 +1157,25 @@ class setupClass(ctk.CTkFrame):
 
     def delete_schedule_check(self, schedule_ID):
         warning_confirmation.warning_confirmation_dict['remove schedule check'][3] = lambda i0 = schedule_ID: self.delete_schedule(i0)
-        warning_confirmation.warning_confirmation_dict['remove schedule check'][1] = f"*This will entirely remove {getFromSchedules('select name from schedules where schedule_ID = %s', (schedule_ID,), True)[0]} and every period in it.*"
+        warning_confirmation.warning_confirmation_dict['remove schedule check'][1] = f"*This will entirely remove {execute_query('select name from schedules where schedule_ID = %s', (schedule_ID,), True)[0]} and every period in it.*"
         warning_confirmation.config('remove schedule check')
 
     def delete_period_check(self, period_ID, schedule_ID):
         warning_confirmation.warning_confirmation_dict['remove period check'][3] = lambda i0 = period_ID, i1 = schedule_ID: self.delete_period(i0, i1)
-        warning_confirmation.warning_confirmation_dict['remove period check'][1] = f"*This will entirely remove {getFromPeriods('select name from periods where period_ID = %s', (period_ID,), True)[0]}.*"
+        warning_confirmation.warning_confirmation_dict['remove period check'][1] = f"*This will entirely remove {execute_query('select name from periods where period_ID = %s', (period_ID,), True)[0]}.*"
         warning_confirmation.config('remove period check')
 
     def delete_schedule(self, schedule_ID):
-        getFromSystem_Control("update system_control set active_schedule_ID = %s", (None,), False, False)
+        execute_query("update system_control set active_schedule_ID = %s", (None,), False, False)
         #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
-        getFromSchedules("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
+        execute_query("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
         self.populate_schedule_list()
         hide_popup(warning_confirmation)
 
 
 
     def delete_period(self, period_ID, schedule_ID):
-        getFromPeriods("delete from periods where period_ID = %s", (period_ID,), False, False)
+        execute_query("delete from periods where period_ID = %s", (period_ID,), False, False)
         #refresh schedule period list
         self.populate_period_list(schedule_ID, None)
         #clear history filters and reset results
@@ -1278,7 +1194,7 @@ class setupClass(ctk.CTkFrame):
         if inserted:
             placeholder = ', '.join(['%s'] * len(inserted))
             query = f"SELECT CONCAT(first_name, ' ', last_name) AS full_name from student_names where macID in ({placeholder})"
-            names = getFromStudent_Names(query, tuple(inserted))
+            names = execute_query(query, tuple(inserted))
             final_text = f"{decision} "
             for student_name in names:
                 final_text += f"{str(student_name[0])}, "
@@ -1290,7 +1206,7 @@ class setupClass(ctk.CTkFrame):
         if overlap:
             placeholder2 = ', '.join(['%s'] * len(overlap))
             query2 = f"SELECT CONCAT(first_name, ' ', last_name) AS full_name from student_names where macID in ({placeholder2})"
-            names2 = getFromStudent_Names(query2, tuple(overlap))
+            names2 = execute_query(query2, tuple(overlap))
             final_text2 = f"Already In {name}: "
             for student_name2 in names2:
                 final_text2 += f"{str(student_name2[0])}, "
@@ -1336,7 +1252,7 @@ class setupClass(ctk.CTkFrame):
         self.tabSwap(5)
 
     def display_weekday_frame(self):
-        self.SW_schedule_dict = {f"{index}: {name}": schedule_ID for index, (name, schedule_ID) in enumerate(getFromSchedules("select name, schedule_ID from schedules"), start=1)}
+        self.SW_schedule_dict = {f"{index}: {name}": schedule_ID for index, (name, schedule_ID) in enumerate(execute_query("select name, schedule_ID from schedules"), start=1)}
         self.SW_schedule_combobox.set("")
         self.SW_schedule_combobox.configure(values = list(self.SW_schedule_dict.keys()))
         self.tabSwap(6)
@@ -1357,7 +1273,7 @@ class setupClass(ctk.CTkFrame):
             self.STF_title_label.configure(text=f"Edit Schedule: {name}")
             self.SI_name_entry.insert(0, name)
             #ADD ABSENCE FRAME
-            self.SI_AF_minute_var.set(f"{(getFromSchedules('select absent_var from schedules where schedule_ID = %s', (schedule_ID,), True)[0]):02d}")
+            self.SI_AF_minute_var.set(f"{(execute_query('select absent_var from schedules where schedule_ID = %s', (schedule_ID,), True)[0]):02d}")
             self.SI_absence_frame.pack(anchor='center')
             self.SI_submit_button.configure(text='Submit Edits')
         else: #IF WE ARE CREATING NEW SCHEDULE
@@ -1402,19 +1318,17 @@ class setupClass(ctk.CTkFrame):
         for key, value in self.SA_MSF_student_dict.items():
             if value.get():  # If checkbox is selected, check if already in the period
                 # Check if the student is already in the period
-                with closing(db.cursor()) as check_student_curs:
-                    # If the student is not already assigned to the period, insert them
-                    if callMultiple(check_student_curs, "SELECT COUNT(*) FROM student_periods WHERE macID = %s AND period_ID = %s", (key, period_ID), True)[0] == 0:
-                        students_to_insert.append((key, period_ID))
-                        inserted_students.append(key)
-                    else:
-                        overlapped_students.append(key)
+                # If the student is not already assigned to the period, insert them
+                if execute_query("SELECT COUNT(*) FROM student_periods WHERE macID = %s AND period_ID = %s", (key, period_ID), True)[0] == 0:
+                    students_to_insert.append((key, period_ID))
+                    inserted_students.append(key)
+                else:
+                    overlapped_students.append(key)
                 value.deselect()  # Deselect the checkbox after checking
 
         # Execute the bulk insert if there are students to insert
         if students_to_insert:
-            with closing(db.cursor()) as add_student_curs:
-                add_student_curs.executemany("INSERT INTO student_periods (macID, period_ID) VALUES (%s, %s)", tuple(students_to_insert))
+            execute_query("INSERT INTO student_periods (macID, period_ID) VALUES (%s, %s)", tuple(students_to_insert), False, False, True)
 
         # Proceed with other operations
         self.populate_SA_period_frame(period_ID)
@@ -1422,11 +1336,10 @@ class setupClass(ctk.CTkFrame):
 
     def SA_remove_students(self, period_ID, name):
         log_list = []
-        with closing(db.cursor()) as remove_student_curs:
-            for key, value in self.SA_PSF_student_dict.items():
-                if value.get():
-                    callMultiple(remove_student_curs, "delete from student_periods where macID = %s and period_ID = %s", (key, period_ID), False, False)
-                    log_list.append(key)
+        for key, value in self.SA_PSF_student_dict.items():
+            if value.get():
+                execute_query("delete from student_periods where macID = %s and period_ID = %s", (key, period_ID), False, False)
+                log_list.append(key)
         self.populate_SA_period_frame(period_ID)
         self.display_SA_success('Removed',log_list, None, name)
 
@@ -1451,11 +1364,11 @@ class setupClass(ctk.CTkFrame):
             self.SI_schedule_combobox.set("")
             self.SI_AF_minute_var.set('30')
             if schedule_ID:
-                getFromSchedules("update schedules set name = %s, absent_var = %s where schedule_ID = %s", (name, absent_var, schedule_ID), False, False)
+                execute_query("update schedules set name = %s, absent_var = %s where schedule_ID = %s", (name, absent_var, schedule_ID), False, False)
                 self.display_schedule_list()
             else:
-                getFromSchedules("insert into schedules (name, type, absent_var) values (%s, %s, %s)", (name, type, absent_var), False, False)
-                self.display_period_list(getFromSchedules("SELECT LAST_INSERT_ID()", None, True)[0], name)
+                execute_query("insert into schedules (name, type, absent_var) values (%s, %s, %s)", (name, type, absent_var), False, False)
+                self.display_period_list(execute_query("SELECT LAST_INSERT_ID()", None, True)[0], name)
 
         else:
             #DISPLAY NEED MORE INPUTS
@@ -1487,18 +1400,18 @@ class setupClass(ctk.CTkFrame):
             if not daytype: #IF NO VALUE IS RETURNED (TRADITIONAL SCHEDULE)
                 daytype = '-'
             if start_time < end_time:
-                absent_var = getFromSchedules("select absent_var from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
+                absent_var = execute_query("select absent_var from schedules where schedule_ID = %s", (schedule_ID,), True)[0]
                 if late_var < absent_var:
                     if block:
                         if period_ID:
-                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and block_val = %s and period_ID != %s", (schedule_ID, daytype, period_ID))
+                            existing_periods = execute_query("select start_time, end_time from periods where schedule_ID = %s and block_val = %s and period_ID != %s", (schedule_ID, daytype, period_ID))
                         else:
-                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and block_val = %s", (schedule_ID, daytype))
+                            existing_periods = execute_query("select start_time, end_time from periods where schedule_ID = %s and block_val = %s", (schedule_ID, daytype))
                     else:
                         if period_ID:
-                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s and period_ID != %s", (schedule_ID, period_ID))
+                            existing_periods = execute_query("select start_time, end_time from periods where schedule_ID = %s and period_ID != %s", (schedule_ID, period_ID))
                         else:
-                            existing_periods = getFromPeriods("select start_time, end_time from periods where schedule_ID = %s", (schedule_ID,))
+                            existing_periods = execute_query("select start_time, end_time from periods where schedule_ID = %s", (schedule_ID,))
                     for existing_start, existing_end in existing_periods:
                         if start_time < existing_end and end_time > existing_start and start_time != existing_end:
                             warning_confirmation.warning_confirmation_dict["period input"][0] = 'Invalid Timing Values!'
@@ -1506,9 +1419,9 @@ class setupClass(ctk.CTkFrame):
                             warning_confirmation.config('period input')
                             return
                     if period_ID: #EDIT EXISTING PERIOD
-                        getFromPeriods("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
+                        execute_query("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
                     else: #ADD NEW PERIOD
-                        getFromPeriods("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
+                        execute_query("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
                     self.display_period_list(schedule_ID)
                     self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
                     self.PI_RF_start_hour_var.set("12")
@@ -1559,11 +1472,10 @@ class setupClass(ctk.CTkFrame):
         if need_more_data: #PROMPT FOR MORE VALUES
             warning_confirmation.config('weekday input')
         else: #SUBMIT DATA
-            with closing(db.cursor()) as weekday_curs:
-                if edit: #WE ARE UPDATING
-                    weekday_curs.executemany("update schedule_days set schedule_ID = %s, weekday = %s, dynamic_daytype = %s, daytype = %s where schedule_ID = %s and weekday = %s", (tuple(submit_list)))
-                else: #WE ARE INSERTING
-                    weekday_curs.executemany("insert into schedule_days (schedule_ID, weekday, dynamic_daytype, daytype) values (%s, %s, %s, %s)", (tuple(submit_list)))
+            if edit: #WE ARE UPDATING
+                execute_query("update schedule_days set schedule_ID = %s, weekday = %s, dynamic_daytype = %s, daytype = %s where schedule_ID = %s and weekday = %s", (tuple(submit_list)), False, False, True)
+            else: #WE ARE INSERTING
+                execute_query("insert into schedule_days (schedule_ID, weekday, dynamic_daytype, daytype) values (%s, %s, %s, %s)", (tuple(submit_list)), False, False, True)
             self.clear_weekday_frame()
             self.SW_submit_button.configure(command=lambda: None)
             self.SW_schedule_combobox.set("")
@@ -1693,7 +1605,7 @@ class historyFrameClass(ctk.CTkFrame):
         self.grid_columnconfigure(1, weight=1)
 
     def update_period_menu(self):
-        self.periods = {f"{index}: {name}": period_ID for index, (name, period_ID) in enumerate(getFromPeriods("select name, period_ID from periods where schedule_ID = %s order by block_val ASC, start_time ASC", (get_active_schedule_ID(),)), start=1)}
+        self.periods = {f"{index}: {name}": period_ID for index, (name, period_ID) in enumerate(execute_query("select name, period_ID from periods where schedule_ID = %s order by block_val ASC, start_time ASC", (get_active_schedule_ID(),)), start=1)}
         self.period_menu.configure(values=list(self.periods.keys()))
 
     # Functions to increment and decrement the date
@@ -1714,7 +1626,11 @@ class historyFrameClass(ctk.CTkFrame):
         # Clear the current student dropdown menu
         period_ID = self.periods.get(period_name)
         self.top_name_menu.set("")
-        self.top_name_vars = getNamesFromPeriod(period_ID)
+        studentNames = execute_query("""SELECT s.macID, s.first_name, s.last_name FROM student_names s JOIN student_periods p ON s.macID = p.macID WHERE p.period_ID = %s""",(period_ID,))
+        studentDictionary = {}
+        for i in studentNames:
+            studentDictionary[(i[1] + " " + i[2])] = i[0]
+        self.top_name_vars = studentDictionary
 
         student_names = [i for i, var in self.top_name_vars.items()]
         if student_names:
@@ -1723,8 +1639,8 @@ class historyFrameClass(ctk.CTkFrame):
         self.top_name_menu.configure(values=student_names)
 
     def add_check_in(self, ID, date, status, period_ID):
-        time = getFromPeriods("""select start_time from periods where period_ID = %s""", (period_ID,), True)[0]
-        getFromScans("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, date, time, status, "Admin Addition"), False, False)
+        time = execute_query("""select start_time from periods where period_ID = %s""", (period_ID,), True)[0]
+        execute_query("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, date, time, status, "Admin Addition"), False, False)
         self.fetch_students()
 
     def display_nothing(self):
@@ -1764,9 +1680,8 @@ class historyFrameClass(ctk.CTkFrame):
 
         # If there are any filters, execute the query and fetch data
         if filters:
-            history_curs = db.cursor()
             query = "SELECT scan_ID, macID, scan_date, scan_time, status, period_ID, reason FROM scans WHERE " + " AND ".join(filters) + " ORDER BY scan_date DESC"
-            students = callMultiple(history_curs, query, variables)
+            students = execute_query(query, variables)
 
 
 
@@ -1775,14 +1690,14 @@ class historyFrameClass(ctk.CTkFrame):
 
             for i, student in enumerate(students):
                 scan_ID, macID, scan_date, scan_time, status, period_ID, reason = student
-                firstLast = callMultiple(history_curs,"""select first_name, last_name from student_names where macID = %s""", (macID,), True)
+                firstLast = execute_query("""select first_name, last_name from student_names where macID = %s""", (macID,), True)
                 name = firstLast[0] + " " + firstLast[1]
 
 
                 time_str = timeConvert(scan_time) if scan_time != -1 else ""
                 attendance = "Absent" if status == 0 else "Tardy" if status == 1 else "Present"
                 text_color = "red" if status == 0 else "orange" if status == 1 else "green"
-                display_text = f"{name}: {attendance}\n{getFromPeriods('select name from periods where period_ID = %s', (period_ID,), True)[0]}\n{time_str} on {scan_date}"
+                display_text = f"{name}: {attendance}\n{execute_query('select name from periods where period_ID = %s', (period_ID,), True)[0]}\n{time_str} on {scan_date}"
                 if reason:
                     display_text += f"\nReason: {reason}"
 
@@ -1806,8 +1721,7 @@ class historyFrameClass(ctk.CTkFrame):
                 col = (col + 1) % 2
             if len(filters) == 4 and len(variables) == 4:
                 newQuery = "select * from scans where " + " AND ".join(filters[:3])
-                history_curs.execute(newQuery, variables[:3])
-                newStudents = history_curs.fetchall()
+                newStudents = execute_query(newQuery, variables[:3])
                 if not newStudents:
                     add_button = ctk.CTkButton(self.scrollable_frame, height=35,
                                                fg_color="#1f6aa5",  # Set background color
@@ -1828,7 +1742,6 @@ class historyFrameClass(ctk.CTkFrame):
             # Update layout and style to ensure even distribution
             self.scrollable_frame.grid_columnconfigure(0, weight=1)
             self.scrollable_frame.grid_columnconfigure(1, weight=1)
-            history_curs.close()
 
 
 
@@ -1934,12 +1847,12 @@ class settingsClass(ctk.CTkFrame):
         tabSwap(5)
 
     def update_period_menu(self):
-        self.periods = {f"{index}: {name}": period_ID for index, (name, period_ID) in enumerate(getFromPeriods("select name, period_ID from periods where schedule_ID = %s ORDER by block_val ASC, start_time ASC", (get_active_schedule_ID(),)),start=1)}
+        self.periods = {f"{index}: {name}": period_ID for index, (name, period_ID) in enumerate(execute_query("select name, period_ID from periods where schedule_ID = %s ORDER by block_val ASC, start_time ASC", (get_active_schedule_ID(),)),start=1)}
         self.period_menu.configure(values=list(self.periods.keys()))
         self.period_menu.set("")
 
     def update_schedule_menu(self):
-        self.schedules = {f"{index}: {name}": schedule_ID for index, (name, schedule_ID) in enumerate(getFromSchedules("select name, schedule_ID from schedules"), start=1)}
+        self.schedules = {f"{index}: {name}": schedule_ID for index, (name, schedule_ID) in enumerate(execute_query("select name, schedule_ID from schedules"), start=1)}
         self.schedule_menu.configure(values = list(self.schedules.keys()))
         active_schedule_ID = get_active_schedule_ID()
         active_schedule_name = None
@@ -1957,7 +1870,7 @@ class settingsClass(ctk.CTkFrame):
 
     def schedule_selected(self, schedule_name):
         schedule_ID = self.schedules.get(schedule_name)
-        getFromSystem_Control("update system_control set active_schedule_ID = %s", (schedule_ID,), False, False)
+        execute_query("update system_control set active_schedule_ID = %s", (schedule_ID,), False, False)
         self.update_period_menu()
         self.period_selected(teacherFrame.period_menu.get())
 
@@ -1967,31 +1880,30 @@ class settingsClass(ctk.CTkFrame):
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
         if period_ID:
-            with closing(db.cursor()) as teacher_curs:
-                students = callMultiple(teacher_curs, """select sp.macID, sn.first_name, sn.last_name from student_periods sp join student_names sn on sp.macID = sn.macID where sp.period_ID = %s""", (period_ID,))
-                if students:
-                    col = 0  # To track column placement
-                    for i, student in enumerate(students):
-                        macID, first, last = student
-                        display_text = first + " " + last
+            students = execute_query("""select sp.macID, sn.first_name, sn.last_name from student_periods sp join student_names sn on sp.macID = sn.macID where sp.period_ID = %s""", (period_ID,))
+            if students:
+                col = 0  # To track column placement
+                for i, student in enumerate(students):
+                    macID, first, last = student
+                    display_text = first + " " + last
 
-                        # Create a small frame for each student's data with some stylish improvements
-                        self.student_frame = ctk.CTkButton(
-                            self.scrollable_frame,
-                            text=display_text,
-                            height=50,
-                            text_color='blue',  # Use attendance-based color
-                            font=("Space Grotesk", 18, 'bold'),
-                            fg_color="lightgrey",  # Set background color
-                            corner_radius=10,  # Rounded corners
-                            border_color="gray",
-                            border_width=2,
-                            command=lambda i0=macID: editStudentData(i0)
-                        )
-                        self.student_frame.grid(row=i // 2, column=col, padx=10, pady=5, sticky="nsew")
+                    # Create a small frame for each student's data with some stylish improvements
+                    self.student_frame = ctk.CTkButton(
+                        self.scrollable_frame,
+                        text=display_text,
+                        height=50,
+                        text_color='blue',  # Use attendance-based color
+                        font=("Space Grotesk", 18, 'bold'),
+                        fg_color="lightgrey",  # Set background color
+                        corner_radius=10,  # Rounded corners
+                        border_color="gray",
+                        border_width=2,
+                        command=lambda i0=macID: editStudentData(i0)
+                    )
+                    self.student_frame.grid(row=i // 2, column=col, padx=10, pady=5, sticky="nsew")
 
-                        # Move to the next column for a 2-column layout
-                        col = (col + 1) % 2
+                    # Move to the next column for a 2-column layout
+                    col = (col + 1) % 2
                 def command():
                     tabSwap(5)
                     setupFrame.display_student_assignment_frame(period_ID, period_name[3:])
@@ -2252,7 +2164,7 @@ def timeout():
     """The main loop for the countdown."""
     global timeout_flag, timeout_active, reset_flag, currentPopup
     timeout_active = True
-    time_left = int(getFromSystem_Control("select timeout_time from system_control", None, True)[0])  # Initial countdown time in seconds
+    time_left = int(execute_query("select timeout_time from system_control", None, True)[0])  # Initial countdown time in seconds
 
     while timeout_active:
         if timeout_flag:  # Stop the loop
@@ -2260,7 +2172,7 @@ def timeout():
 
         if reset_flag:  # Reset the timer
             reset_flag = False
-            time_left = int(getFromSystem_Control("select timeout_time from system_control", None, True)[0])  # Reset countdown
+            time_left = int(execute_query("select timeout_time from system_control", None, True)[0])  # Reset countdown
 
         if time_left > 0:
             time_left -= 1
@@ -2552,7 +2464,7 @@ class StudentMenu(ctk.CTkFrame):
         for widget in self.periodFrame.winfo_children():
             if isinstance(widget, ctk.CTkCheckBox):
                 widget.destroy()
-        period_info = getFromPeriods("select period_ID, name, block_val from periods where schedule_ID = %s ORDER by block_val ASC, start_time ASC", (get_active_schedule_ID(),))
+        period_info = execute_query("select period_ID, name, block_val from periods where schedule_ID = %s ORDER by block_val ASC, start_time ASC", (get_active_schedule_ID(),))
         last_block_val = None
         for index, period in enumerate(period_info):
             period_ID, name, block_val = period
@@ -2596,7 +2508,7 @@ class StudentMenu(ctk.CTkFrame):
         self.reset_button.place(relx=.01,rely=.84)
         self.newStudent_label.configure(text='Edit Student Data: ',text_color='orange')
         fname, lname = getFirstLastName(self.macID)
-        periods = [item[0] for item in getFromStudent_Periods("""SELECT period_ID from student_periods WHERE macID = %s""",(self.macID,))]
+        periods = [item[0] for item in execute_query("""SELECT period_ID from student_periods WHERE macID = %s""",(self.macID,))]
         self.first_name_entry.delete(0, "end")
         self.last_name_entry.delete(0, "end")
         self.first_name_entry.insert(tk.END, fname)
@@ -2608,14 +2520,14 @@ class StudentMenu(ctk.CTkFrame):
         last_name = self.last_name_entry.get()
         selected_periods = self.get_selected_periods()
         if first_name and last_name and selected_periods:
-            if not getFromStudent_Names("select macID from student_names where first_name = %s and last_name = %s and macID != %s", (first_name, last_name, self.macID)): #if there is another student with the same name
+            if not execute_query("select macID from student_names where first_name = %s and last_name = %s and macID != %s", (first_name, last_name, self.macID)): #if there is another student with the same name
                 if self.editing: #DELETE OLD STUDENT DATA IF ADDING NEW
-                    getFromStudent_Periods("""delete from student_periods where macID = %s""", (self.macID,), False, False)
-                    getFromStudent_Names("""delete from student_names where macID = %s""", (self.macID,), False, False)
+                    execute_query("""delete from student_periods where macID = %s""", (self.macID,), False, False)
+                    execute_query("""delete from student_names where macID = %s""", (self.macID,), False, False)
                 #ADD NEW STUDENT INFO
-                getFromStudent_Names("""INSERT INTO student_names(macID, first_name, last_name) values (%s, %s, %s)""", (self.macID,first_name.lower().title(),last_name.lower().title()), False, False)
+                execute_query("""INSERT INTO student_names(macID, first_name, last_name) values (%s, %s, %s)""", (self.macID,first_name.lower().title(),last_name.lower().title()), False, False)
                 for period_ID in selected_periods:
-                    getFromStudent_Periods("INSERT INTO student_periods(macID, period_ID) values (%s, %s)", (self.macID, period_ID), False, False)
+                    execute_query("INSERT INTO student_periods(macID, period_ID) values (%s, %s)", (self.macID, period_ID), False, False)
                 teacherFrame.period_selected(teacherFrame.period_menu.get())
                 self.close_popup()
             else:
@@ -2920,9 +2832,9 @@ class TeacherPasswordPopup(ctk.CTkFrame):
         entered_password = "".join(self.entered_password)
         if self.changePW:
             self.close_popup()
-            getFromSystem_Control("""update system_control set master_pass = %s""", (entered_password,), False, False)
+            execute_query("""update system_control set master_pass = %s""", (entered_password,), False, False)
         else:
-            teacherPW = getFromSystem_Control("""select master_pass from system_control""", None, True)
+            teacherPW = execute_query("""select master_pass from system_control""", None, True)
             if teacherPW != None:
                 teacherPW = teacherPW[0]
             if entered_password == teacherPW or entered_password == "445539":
@@ -3040,7 +2952,7 @@ class EditAttendanceClass(ctk.CTkFrame):
 
 
     def delete_attendance(self):
-        getFromScans("""delete FROM scans where scan_ID = %s""", (self.scan_ID,), False, False)
+        execute_query("""delete FROM scans where scan_ID = %s""", (self.scan_ID,), False, False)
         historyFrame.fetch_students()
         self.hide()
 
@@ -3060,7 +2972,7 @@ class EditAttendanceClass(ctk.CTkFrame):
             reason = selected_reason
         self.hide()
         self.reason_entry.delete(0, 'end')
-        getFromScans("""UPDATE scans SET status = %s, reason = %s WHERE scan_ID = %s""",(attendance_value, reason, self.scan_ID), False, False)
+        execute_query("""UPDATE scans SET status = %s, reason = %s WHERE scan_ID = %s""",(attendance_value, reason, self.scan_ID), False, False)
         self.error_label.grid_forget()
         historyFrame.fetch_students()
 
@@ -3095,7 +3007,7 @@ class dynamic_day_selectionClass(ctk.CTkFrame):
     def setAorBday(self, daytype):
         global currentPopup
         day = date.today().weekday()
-        getFromSchedule_Days("update schedule_days set daytype = %s where schedule_ID = %s and weekday = %s", (daytype, get_active_schedule_ID(), day), False, False)
+        execute_query("update schedule_days set daytype = %s where schedule_ID = %s and weekday = %s", (daytype, get_active_schedule_ID(), day), False, False)
         periodListPop()
         hide_popup(self)
         currentPopup = None
@@ -3306,9 +3218,9 @@ class warning_confirmation_class(ctk.CTkFrame):
 
     def delete_student(self, macID):
         hide_popup(self)
-        getFromStudent_Periods("""delete from student_periods where macID = %s""", (macID,), False, False)
-        getFromStudent_Names("""delete from student_names where macID = %s""", (macID,), False, False)
-        getFromScans("""delete from scans where macID = %s""", (macID,), False, False)
+        execute_query("""delete from student_periods where macID = %s""", (macID,), False, False)
+        execute_query("""delete from student_names where macID = %s""", (macID,), False, False)
+        execute_query("""delete from scans where macID = %s""", (macID,), False, False)
         teacherFrame.period_selected(teacherFrame.period_menu.get()) #RELOAD STUDENT LIST ON TEACHER FRAME
 
     def reset_display_password_menu(self):
@@ -3412,10 +3324,10 @@ class timeoutMenuClass(ctk.CTkFrame):
         var.set(f"{new_minute:02d}")
 
     def update(self):
-        self.selection_frame_var.set(f"{int((int(getFromSystem_Control('select timeout_time from system_control', None, True)[0]) / 60)):02d}")
+        self.selection_frame_var.set(f"{int((int(execute_query('select timeout_time from system_control', None, True)[0]) / 60)):02d}")
 
     def submit(self):
-        getFromSystem_Control("update system_control set timeout_time = %s", (int(self.timeout_value_label.cget('text')) * 60,), False, False)
+        execute_query("update system_control set timeout_time = %s", (int(self.timeout_value_label.cget('text')) * 60,), False, False)
         hide_popup(self)
 timeoutMenu = timeoutMenuClass(window)
 
