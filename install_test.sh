@@ -254,6 +254,8 @@ echo ""
 sudo systemctl start kiosk.service
 EOF
 
+chown pi:pi /home/pi/update.sh
+
 #create update service to update python script ---------------------------------------------------
 echo "Creating update service!"
 #update service
