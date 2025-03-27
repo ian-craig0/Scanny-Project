@@ -267,7 +267,7 @@ After=network.target
 [Service]
 Type=oneshot
 User=pi
-ExecStart=/home/pi/update.sh
+ExecStart=/bin/bash /home/pi/update.sh
 EOF
 
 #update service timer
