@@ -103,6 +103,7 @@ def get_current_Period_ID(time):
     if not daytype: #CHECK IF THE SCHEDULE IS RUNNING TODAY
         return daytype
     else:
+        print(get_active_schedule_ID(), daytype, time)
         period_ID = execute_query("SELECT period_ID FROM periods WHERE schedule_ID = %s AND block_val = %s AND start_time <= %s AND end_time > %s", (get_active_schedule_ID(), daytype, time, time), True)
         #IF THERE IS A PERIOD AT THE CURRENT TIME
         if period_ID:
