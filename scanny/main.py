@@ -99,8 +99,8 @@ def getPeriodsToday(periods):
 
 def get_current_Period_ID(time):
     # RETURNS NOTHING IF NO SCHEDULE THAT DAY, RETURNS '-' if there is no class at that time, RETURNS period_ID if there is a class
-    raise Exception(f"Time: {time}")
     daytype = execute_query("select daytype from schedule_days where schedule_ID = %s and weekday = %s", (get_active_schedule_ID(), date.today().weekday()), True)
+    raise Exception(f"Daytype: {daytype[0]}")
     if not daytype: #CHECK IF THE SCHEDULE IS RUNNING TODAY
         return daytype
     else:
