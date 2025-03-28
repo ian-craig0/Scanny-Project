@@ -130,10 +130,8 @@ def getAttendance(time, period_ID):
 
 def handle_settings_edit(ID, reset_oldMACID):
     """Runs on the main thread - safe for GUI operations"""
-    if not warning_confirmation.winfo_ismapped():
-        return
 
-    if warning_confirmation.current_key == "reset ID":
+    if warning_confirmation.current_key == "reset ID" and warning_confirmation.winfo_ismapped():
         # Database query can stay here if fast, or move to background thread
         student_exists = execute_query(
             "SELECT first_name FROM student_names WHERE macID = %s", (ID,), True)
