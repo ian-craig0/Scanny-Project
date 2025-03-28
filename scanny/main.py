@@ -33,6 +33,7 @@ from PIL import Image, ImageTk
 #GUI CREATION --------------------------------------------
 #Window Setup
 window = ctk.CTk()
+window.config(cursor="None")
 window.attributes('-fullscreen',True)
 ctk.set_appearance_mode("Dark")
 sWidth = window.winfo_screenwidth()
