@@ -147,7 +147,7 @@ def handle_settings_edit(ID, reset_oldMACID):
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
             execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (new_id, old_id), False, False)
-            window.after(0, refresh_teacher_frame)
+            window.after(0, lambda: refresh_teacher_frame())
             
     elif currentTAB != 6:
         if execute_query("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
@@ -348,7 +348,7 @@ def checkIN():
             if ID:
                 if str(ID) == master_macID:
                     if teacherPWPopup.getDisplayed():
-                        window.after(0, teacherPWPopup.close_popup)
+                        window.after(0, lambda: teacherPWPopup.close_popup())
                         window.after(0, lambda i0 = teacherPWPopup.get_tab()+2: tabSwap(i0))
                         sleep_ms(3000)
                 elif currentTAB == 1 or currentTAB == 2:
@@ -358,9 +358,9 @@ def checkIN():
                             if get_active_schedule_ID(): #CHECK IF THERE IS A SELECTED ACTIVE SCHEDULE
                                 current_period = get_current_Period_ID(scan_time)
                                 if not current_period: #NO CLASS ON THIS DAY
-                                    window.after(0, lambda: warning_confirmation.config, "no schedule today")
+                                    window.after(0, lambda: warning_confirmation.config("no schedule today"))
                                 elif current_period == "-": #NO CLASS AT THIS TIME ON THIS VALID DAY
-                                    window.after(0, lambda: warning_confirmation.config, "no class currently")
+                                    window.after(0, lambda: warning_confirmation.config("no class currently"))
                                 else: #ONLY RUNS IF THERE IS A PERIOD TODAY!
                                     #GET LIST OF PERIODS FOR THIS SPECIFIC DAY
                                     periods_today = getPeriodsToday(studentPeriodList) #GET THE STUDENT PERIODS FOR THE DAY
@@ -371,7 +371,7 @@ def checkIN():
                                             notInPeriod = False
                                             #CHECK IF THERE IS A SCAN ALREADY FOR TODAY, FOR THE STUDENT, IN THE CURRENT PERIOD, FOR THE ACTIVE SCHEDULE
                                             if execute_query("SELECT 1 FROM scans WHERE schedule_ID = %s AND period_ID = %s AND macID = %s AND scan_date = %s LIMIT 1", (get_active_schedule_ID(), period_ID, ID, scan_date), True):
-                                                window.after(0, warning_confirmation.config, "double scan")
+                                                window.after(0, lambda: warning_confirmation.config("double scan"))
                                             else: #IF THEY ARE IN THE CURRENT PERIOD ON THIS DAY AND HAVEN'T CHECKED IN YET
                                                 status = getAttendance(scan_time, period_ID)
                                                 execute_query("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
@@ -381,13 +381,13 @@ def checkIN():
                                             continue
                                     if notInPeriod:
                                         #DISPLAY YOU ARE NOT IN THE CURRENT PERIOD
-                                        window.after(0, warning_confirmation.config, 'wrong period')
+                                        window.after(0, lambda: warning_confirmation.config('wrong period'))
                             else: #NO ACTIVE SCHEDULE
-                                window.after(0, warning_confirmation.config, 'no active schedule')
+                                window.after(0, lambda: warning_confirmation.config('no active schedule'))
                         else: #CREATE NEW STUDENT ENTRY BECAUSE THEY ARE NOT IN MASTER DATABASE
                             #GET STUDENT DATA WITH POP UP
                             getStudentInfoFrame.setMACID(ID)
-                            window.after(0, tabSwap, 6)
+                            window.after(0, lambda: tabSwap(6))
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
                     window.after(0, lambda i0 = ID, i1 = reset_oldMACID: handle_settings_edit(i0, i1))
                 sleep_ms(100)
@@ -2166,7 +2166,7 @@ def timeout():
             time_left -= 1
             time.sleep(1)
         else:
-            window.after(0, timeout_result)
+            window.after(0, lambda: timeout_result())
 
 def start_timeout():
     """Start the timeout thread if not already running."""
@@ -2691,17 +2691,17 @@ class editInternetClass(ctk.CTkFrame):
         window.after(0, lambda i0 = ssid, i1 = connected: self.finish_check_connection(i0, i1))
 
     def finish_check_connection(self, ssid, connected):
-        window.after(0, loading_indicator.stop_spinning)
+        window.after(0, lambda: loading_indicator.stop_spinning())
         window.after(0, lambda i0 = loading_indicator: hide_popup(i0))
 
         if connected:
             warning_confirmation.warning_confirmation_dict["network success"][1] = f"Successfully connected to {ssid}!"
-            window.after(0, warning_confirmation.config, "network success")
+            window.after(0, lambda: warning_confirmation.config("network success"))
         else:
             warning_confirmation.warning_confirmation_dict["network fail"][1] = (
                 f"Failed to establish a connection with {ssid}."
             )
-            window.after(0, warning_confirmation.config, "network fail")
+            window.after(0, lambda: warning_confirmation.config("network fail"))
 
 internetMenu = editInternetClass(window)
 
