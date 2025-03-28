@@ -1642,23 +1642,23 @@ class historyFrameClass(ctk.CTkFrame):
         if self.top_name_check_var.get():  # CHECK IF THEY WANT TO SEARCH FOR NAME
             if self.top_name_var.get():
                 macID = self.top_name_vars.get(self.top_name_var.get())
-                filters.append("macID = %s")
+                filters.append("s.macID = %s")
                 variables.append(macID)
         if self.period_check_var.get():  # CHECK IF THEY WANT TO SEARCH FOR PERIOD
             if self.period_var.get():
                 period_ID = self.periods.get(self.period_var.get())
-                filters.append("period_ID = %s")
+                filters.append("s.period_ID = %s")
                 variables.append(period_ID)
         if self.date_check_var.get():  # CHECK IF THEY WANT TO SEARCH FOR DATE
             month = str(self.month_var.get()).zfill(2)
             day = str(self.day_var.get()).zfill(2)
             scan_date = f"{datetime.now().year}-{month}-{day}"
-            filters.append("scan_date = %s")
+            filters.append("s.scan_date = %s")
             variables.append(scan_date)
         if self.attendance_check_var.get():  # CHECK IF THEY WANT TO SEARCH FOR ATTENDANCE
             if self.attendance_var.get():
                 status = self.attendance_vars.get(self.attendance_var.get())
-                filters.append("status = %s")
+                filters.append("s.status = %s")
                 variables.append(status)
 
         # Clear the scrollable frame to avoid overlapping previous data
@@ -1667,7 +1667,7 @@ class historyFrameClass(ctk.CTkFrame):
 
         # If there are any filters, execute the query and fetch data
         if filters:
-            query = "SELECT scan_ID, macID, scan_date, scan_time, status, period_ID, reason FROM scans WHERE " + " AND ".join(filters) + " ORDER BY scan_date DESC"
+            query = "SELECT s.scan_ID, s.macID, s.scan_date, s.scan_time, s.status, s.period_ID, s.reason, sn.first_name, sn.last_name, p.name FROM scans s JOIN student_names sn on s.macID = sn.macID JOIN periods p on s.period_ID = p.period_ID WHERE " + " AND ".join(filters) + " ORDER BY s.scan_date DESC"
             students = execute_query(query, variables)
 
 
@@ -1676,15 +1676,14 @@ class historyFrameClass(ctk.CTkFrame):
             col = 0  # To track column placement
 
             for i, student in enumerate(students):
-                scan_ID, macID, scan_date, scan_time, status, period_ID, reason = student
-                firstLast = execute_query("""select first_name, last_name from student_names where macID = %s""", (macID,), True)
-                name = firstLast[0] + " " + firstLast[1]
+                scan_ID, macID, scan_date, scan_time, status, period_ID, reason, first_name, last_name, period_name = student
+                name = first_name + " " + last_name
 
 
                 time_str = timeConvert(scan_time) if scan_time != -1 else ""
                 attendance = "Absent" if status == 0 else "Tardy" if status == 1 else "Present"
                 text_color = "red" if status == 0 else "orange" if status == 1 else "green"
-                display_text = f"{name}: {attendance}\n{execute_query('select name from periods where period_ID = %s', (period_ID,), True)[0]}\n{time_str} on {scan_date}"
+                display_text = f"{name}: {attendance}\n{period_name}\n{time_str} on {scan_date}"
                 if reason:
                     display_text += f"\nReason: {reason}"
 
