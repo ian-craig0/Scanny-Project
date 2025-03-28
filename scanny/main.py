@@ -371,6 +371,7 @@ def checkIN():
                                             notInPeriod = False
                                             #CHECK IF THERE IS A SCAN ALREADY FOR TODAY, FOR THE STUDENT, IN THE CURRENT PERIOD, FOR THE ACTIVE SCHEDULE
                                             if execute_query("SELECT 1 FROM scans WHERE schedule_ID = %s AND period_ID = %s AND macID = %s AND scan_date = %s LIMIT 1", (get_active_schedule_ID(), period_ID, ID, scan_date), True):
+                                                warning_confirmation.warning_confirmation_dict['double scan'][1] = f"You have already checked in to {execute_query("select name from periods where period_ID = %s", (period_ID,), True)[0]}."
                                                 window.after(0, lambda: warning_confirmation.config("double scan"))
                                             else: #IF THEY ARE IN THE CURRENT PERIOD ON THIS DAY AND HAVEN'T CHECKED IN YET
                                                 status = getAttendance(scan_time, period_ID)
@@ -3150,7 +3151,7 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.warning_confirmation_dict = {"no active schedule": ["No Active Schedule!", "Your teacher must select an active schedule.", 'red', None, None],
                                           "no schedule today": ["Check-in Unavailable Today!", "The current schedule is not active today. Please contact your teacher if you have questions.", 'orange', None, None],
                                           "no class currently": ["No Scheduled Class!", "There is no class scheduled at this time. Please check your class schedule or return during your designated period.", 'orange', None, None],
-                                          "double scan": ['Double Scan!', "You have already checked in for this period.", 'orange', None, None],
+                                          "double scan": ['Double Scan!', "note", 'orange', None, None],
                                           "wrong period": ['Wrong period!', "You are not in the current period.", 'orange', None, None],
                                           "schedule input": ['Missing Schedule Values!', "Please complete all required fields before submitting.", 'orange', None, None],
                                           "period input": ["title", "note", 'orange', None, None],
