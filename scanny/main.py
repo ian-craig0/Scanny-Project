@@ -63,8 +63,8 @@ def execute_query(query, params=None, fetchone=False, select=True, exc_many = Fa
         result = cursor.fetchone() if select and fetchone else cursor.fetchall() if select else None
         cursor.close()
         return result
-    except:
-        raise Exception(f"Database query failed")
+    except Exception as e:
+        raise Exception(f"Database query failed: {e}")
     finally:
         conn.close()
 
