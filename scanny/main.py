@@ -106,7 +106,6 @@ def get_current_Period_ID(time):
         period_ID = execute_query("SELECT period_ID FROM periods WHERE schedule_ID = %s AND block_val = %s AND start_time <= %s AND end_time > %s", (get_active_schedule_ID(), daytype[0], time, time), True)
         #IF THERE IS A PERIOD AT THE CURRENT TIME
         if period_ID:
-            raise Exception(f"period_ID: {period_ID[0]}")
             return period_ID[0]
         else:
             return "-"
@@ -359,9 +358,9 @@ def checkIN():
                             if get_active_schedule_ID(): #CHECK IF THERE IS A SELECTED ACTIVE SCHEDULE
                                 current_period = get_current_Period_ID(scan_time)
                                 if not current_period: #NO CLASS ON THIS DAY
-                                    window.after(0, warning_confirmation.config, "no schedule today")
+                                    window.after(0, lambda: warning_confirmation.config, "no schedule today")
                                 elif current_period == "-": #NO CLASS AT THIS TIME ON THIS VALID DAY
-                                    window.after(0, warning_confirmation.config, "no class currently")
+                                    window.after(0, lambda: warning_confirmation.config, "no class currently")
                                 else: #ONLY RUNS IF THERE IS A PERIOD TODAY!
                                     #GET LIST OF PERIODS FOR THIS SPECIFIC DAY
                                     periods_today = getPeriodsToday(studentPeriodList) #GET THE STUDENT PERIODS FOR THE DAY
