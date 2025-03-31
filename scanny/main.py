@@ -1302,16 +1302,18 @@ class setupClass(ctk.CTkFrame):
         overlapped_students = []
         inserted_students = []
         students_to_insert = []
-
+        
+        period_check = [item[0] for item in execute_query("SELECT macID from student_periods where period_ID = %s", (period_ID,))]
+    
         for key, value in self.SA_MSF_student_dict.items():
             if value.get():  # If checkbox is selected, check if already in the period
                 # Check if the student is already in the period
                 # If the student is not already assigned to the period, insert them
-                if execute_query("SELECT COUNT(*) FROM student_periods WHERE macID = %s AND period_ID = %s", (key, period_ID), True)[0] == 0:
+                if key in period_check:
+                    overlapped_students.append(key)
+                else:
                     students_to_insert.append((key, period_ID))
                     inserted_students.append(key)
-                else:
-                    overlapped_students.append(key)
                 value.deselect()  # Deselect the checkbox after checking
 
         # Execute the bulk insert if there are students to insert
@@ -1324,10 +1326,12 @@ class setupClass(ctk.CTkFrame):
 
     def SA_remove_students(self, period_ID, name):
         log_list = []
+        remove_list = []
         for key, value in self.SA_PSF_student_dict.items():
             if value.get():
-                execute_query("delete from student_periods where macID = %s and period_ID = %s", (key, period_ID), False, False)
                 log_list.append(key)
+                remove_list.append((key, period_ID))
+        execute_query("delete from student_periods where macID = %s and period_ID = %s", tuple(remove_list), False, False, True)
         self.populate_SA_period_frame(period_ID)
         self.display_SA_success('Removed',log_list, None, name)
 
