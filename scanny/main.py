@@ -249,7 +249,7 @@ AND s.macID IS NULL;"""
     ending_period = execute_query(ending_period_query, (date.today().weekday(), time, active_schedule_ID), True)
     if starting_period:
         if currentTAB == 1 or currentTAB == 2:
-            PeriodFrameManager.display_period(starting_period[0])
+            window.after(0, lambda i0 = starting_period[0]: PeriodFrameManager.display_period(i0))
 
     if ending_period:
         tabSwap(1)
@@ -2180,7 +2180,7 @@ spinning_image = LoadingAnimation(awaitingFrame, "#333333")
 spinning_image.place(relx=.5,rely=.6,anchor='center')
 
 #Setup scrollable frames
-PeriodFrameManager = PeriodFrameManagerClass(window)
+PeriodFrameManager = PeriodFrameManagerClass(displayedTabContainer)
 
 
 #PERIOD LIST
