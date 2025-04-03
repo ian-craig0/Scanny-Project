@@ -2070,7 +2070,7 @@ class PeriodFrameManagerClass:
         self.unload_schedule()
         periods = execute_query("select period_ID, name from periods where schedule_ID = %s", (get_active_schedule_ID(),))
         for period_data in periods:
-            add_period(period_data)
+            self.add_period(period_data)
     
     def unload_schedule(self):
         for frame in list(self.frames.values()):
