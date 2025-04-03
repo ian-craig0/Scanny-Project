@@ -1988,7 +1988,7 @@ class PeriodFrame(ctk.CTkScrollableFrame):
     def __init__(self, parent, period_data):
         #scrollable frame setup
         super().__init__(parent)
-        self.configure(border_color = 'white', border_width = 4, label_font = ('Roboto', 30),bg_color='white')
+        self.configure(border_color = 'white', border_width = 4, label_font = ('Spake Grotesk', 30, "bold"),bg_color='white')
         enable_swipe_scroll(self)
         self._scrollbar.configure(width=25)
         self.columnconfigure(0, weight=1)
@@ -2029,7 +2029,7 @@ class PeriodFrame(ctk.CTkScrollableFrame):
                 studentFrame = ctk.CTkFrame(self, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
                 studentFrame.pack_propagate(0)
                 
-                label = ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Space Grotesk', 15))
+                label = ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15))
                 label.pack(side='left', padx=5,pady=2)
                 
                 icon = ctk.CTkLabel(studentFrame, image= img, text='', fg_color='transparent')
