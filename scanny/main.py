@@ -2018,7 +2018,7 @@ class PeriodFrame(ctk.CTkScrollableFrame):
     AND sc.period_ID = %s
     WHERE sp.period_ID = %s
     ORDER BY sc.status ASC, sn.first_name ASC"""
-        students = execute_query(query, (period_ID, period_ID))
+        students = execute_query(query, (self.period_ID, self.period_ID))
         
         if students:
             self.students = {}
