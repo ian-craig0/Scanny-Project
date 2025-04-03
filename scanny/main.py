@@ -3033,6 +3033,8 @@ class EditAttendanceClass(ctk.CTkFrame):
     def delete_attendance(self):
         execute_query("""delete FROM scans where scan_ID = %s""", (self.scan_ID,), False, False)
         historyFrame.fetch_students()
+        frame = PeriodFrameManager.get_period(self.period_ID)
+        frame.update_student(self.macID, None, -1)
         self.hide()
 
     def hide(self):
@@ -3052,7 +3054,7 @@ class EditAttendanceClass(ctk.CTkFrame):
         self.hide()
         self.reason_entry.delete(0, 'end')
         execute_query("""UPDATE scans SET status = %s, reason = %s WHERE scan_ID = %s""",(attendance_value, reason, self.scan_ID), False, False)
-        frame = PeriodFrameManager.get_period(period_ID)
+        frame = PeriodFrameManager.get_period(self.period_ID)
         frame.update_student(self.macID, self.scan_time, attendance_value)
         self.error_label.grid_forget()
         historyFrame.fetch_students()
