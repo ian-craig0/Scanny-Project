@@ -158,7 +158,7 @@ def refresh_teacher_frame():
     teacherFrame.period_selected(teacherFrame.period_menu.get())
 
 def close_success_scan():
-    time.sleep(1.5)
+    time.sleep(2)
     window.after(0, lambda: successFrame.lower())
     #window.after(1, tabSwap, 1)
 
@@ -249,8 +249,7 @@ AND s.macID IS NULL;"""
     ending_period = execute_query(ending_period_query, (date.today().weekday(), time, active_schedule_ID), True)
     if starting_period:
         if currentTAB == 1 or currentTAB == 2:
-            tabSwap(2)
-            studentListPop(starting_period[0])
+            PeriodFrameManager.display_period(starting_period[0])
 
     if ending_period:
         tabSwap(1)
@@ -278,46 +277,7 @@ def timeFunc():
         period_transition_check(current_time, strftime("%Y-%m-%d"))
         prevMinute = current_time
     timeLabel.after(1000, timeFunc)
-
-#STUDENTLIST POPULATION
-def studentListPop(period_ID):
-    global sHeight, sWidth
-    #CLEAR THE STUDENTLIST FRAME
-    studentList.configure(label_text=execute_query("select name from periods where period_ID = %s", (period_ID,), True)[0])
-    for widget in studentList.winfo_children():
-        if widget.winfo_exists():
-            widget.destroy()
-    query = """SELECT sp.macID, sn.first_name, sn.last_name, sc.status, sc.scan_time
-FROM student_periods sp
-JOIN student_names sn ON sp.macID = sn.macID
-LEFT JOIN scans sc ON sp.macID = sc.macID 
-AND sc.scan_date = CURDATE() 
-AND sc.period_ID = %s
-WHERE sp.period_ID = %s
-ORDER BY sc.status ASC, sn.first_name ASC"""
-    students = execute_query(query, (period_ID, period_ID))
-    if students:
-        for index, student in enumerate(students):
-            macID, first_name, last_name, status, scan_time = student
-
-            student_dict = {2: ('green', "check.png", (40,30), 5, 5),
-                            1: ('orange', "dash.png", (40,40), 4, 2),
-                            0: ('red', "x.png", (30,30), 10,2)}
-
-            color, img, size, padx, pady = student_dict.get(status if status else 0)
-
-            studentFrame = ctk.CTkFrame(studentList, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
-            studentFrame.pack_propagate(0)
-            image = ctk.CTkImage(light_image=Image.open(script_directory + r"/images/" + img), size = size)
-            ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15)).pack(side='left', padx=5,pady=2)
-            ctk.CTkLabel(studentFrame, image= image, text='', fg_color='transparent').pack(padx=padx,pady=pady,side='right')
-
-            # Calculate row and column dynamically
-            row = index // 2  # Every two students per row
-            column = index % 2
-
-            studentFrame.grid(row=row, column=column, pady=5, padx=3, sticky='nsw')
-    studentList._parent_canvas.yview_moveto(0)
+    
 
 #PERIODLIST UPDATING
 def periodListPop():
@@ -329,10 +289,7 @@ def periodListPop():
     if periods:
         for period_info in periods:
             period_ID, period_name = period_info
-            def command(per):
-                tabSwap(2)
-                studentListPop(per)
-            ctk.CTkButton(periodList,border_width=4,bg_color='white',text=(f"{period_name}"), border_color='white', font=('Space Grotesk Medium', 20),command=lambda i0 = period_ID: command(i0)).pack(fill = 'both', expand = True)
+            ctk.CTkButton(periodList,border_width=4,bg_color='white',text=(f"{period_name}"), border_color='white', font=('Space Grotesk Medium', 20),command=lambda i0 = period_ID: PeriodFrameManager.display_period(i0)).pack(fill = 'both', expand = True)
     else:
         ctk.CTkLabel(periodList, text='No Periods to Display...', font=('Space Grotesk', 30), text_color='gray').place(relx=0.5, rely=0.5, anchor='center')
 
@@ -376,8 +333,10 @@ def checkIN():
                                                 status = getAttendance(scan_time, period_ID)
                                                 execute_query("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, scan_date, scan_time, status, None), False, False)
                                                 window.after(0, lambda i0 = scan_time, i1 = ID, i2 = status: successScan(i0, i1, i2))
+                                                frame = PeriodFrameManager.get_period(period_ID)
+                                                window.after(0, lambda i0 = ID, i1 = scan_time, i2 = status: frame.update_student(i0, i1, i2))
+                                                window.after(0, lambda i0 = period_ID: PeriodFrameManager.display_period(i0))
                                                 #window.after(0, lambda i0 = period_ID: studentListPop(i0))
-                                                sleep_ms(1500)
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
                                             continue
                                     if notInPeriod:
@@ -1165,6 +1124,7 @@ class setupClass(ctk.CTkFrame):
 
     def delete_period(self, period_ID, schedule_ID):
         execute_query("delete from periods where period_ID = %s", (period_ID,), False, False)
+        PeriodFrameManager.remove_period(period_ID)
         #refresh schedule period list
         self.populate_period_list(schedule_ID, None)
         #clear history filters and reset results
@@ -1320,7 +1280,10 @@ class setupClass(ctk.CTkFrame):
         # Execute the bulk insert if there are students to insert
         if students_to_insert:
             execute_query("INSERT INTO student_periods (macID, period_ID) VALUES (%s, %s)", tuple(students_to_insert), False, False, True)
-
+            frame = PeriodFrameManager.get_period(period_ID)
+            frame.populate_students()
+            
+        
         # Proceed with other operations
         self.populate_SA_period_frame(period_ID)
         self.display_SA_success('Added', inserted_students, overlapped_students,name)
@@ -1333,6 +1296,8 @@ class setupClass(ctk.CTkFrame):
                 log_list.append(key)
                 remove_list.append((key, period_ID))
         execute_query("delete from student_periods where macID = %s and period_ID = %s", tuple(remove_list), False, False, True)
+        frame = PeriodFrameManager.get_period(period_ID)
+        frame.populate_students()
         self.populate_SA_period_frame(period_ID)
         self.display_SA_success('Removed',log_list, None, name)
 
@@ -1415,6 +1380,7 @@ class setupClass(ctk.CTkFrame):
                         execute_query("update periods set schedule_ID = %s, block_val = %s, name = %s, start_time = %s, end_time=%s, late_var = %s where period_ID = %s", (schedule_ID, daytype, name, start_time, end_time, late_var, period_ID), False, False)
                     else: #ADD NEW PERIOD
                         execute_query("insert into periods (schedule_ID, block_val, name, start_time, end_time, late_var) values (%s, %s, %s, %s, %s, %s)", (schedule_ID, daytype, name, start_time, end_time, late_var), False, False)
+                        PeriodFrameManager.add_period((execute_query("select period_ID from periods ORDER BY period_ID DESC LIMIT 1", None, True)[0], name))
                     self.display_period_list(schedule_ID)
                     self.PI_LF_period_entry.delete(0, 'end') #CLEAR ENTRY
                     self.PI_RF_start_hour_var.set("12")
@@ -1482,7 +1448,7 @@ class setupClass(ctk.CTkFrame):
 
 
 #HISTORY MODE FRAME
-class historyFrameClass(ctk.CTkFrame):
+class historyClass(ctk.CTkFrame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
@@ -1635,6 +1601,8 @@ class historyFrameClass(ctk.CTkFrame):
         time = execute_query("""select start_time from periods where period_ID = %s""", (period_ID,), True)[0]
         execute_query("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", (period_ID, get_active_schedule_ID(), ID, date, time, status, "Admin Addition"), False, False)
         self.fetch_students()
+        frame = PeriodFrameManager.get_period(period_ID)
+        frame.update_student(ID, time, status)
 
     def display_nothing(self):
         self.nothing_label = ctk.CTkLabel(self.scrollable_frame, text='No results found for your search query!', font=('Space Grotesk', 17), text_color='gray')
@@ -1704,7 +1672,7 @@ class historyFrameClass(ctk.CTkFrame):
                     text_color='white',
                     text=display_text,
                     anchor='center',
-                    command= lambda i0 = scan_ID, i1=attendance, i2=reason: editAttendanceData(i0, i1, i2)
+                    command= lambda i0 = scan_ID, i1=attendance, i2=reason, i3 = macID, i4 = scan_time, i5 = period_ID: editAttendanceData(i0, i1, i2, i3, i4, i5)
                 )
 
                 student_frame.grid(row=i // 2, column=col, padx=10, pady=10, sticky="nsew")
@@ -1863,6 +1831,7 @@ class settingsClass(ctk.CTkFrame):
     def schedule_selected(self, schedule_name):
         schedule_ID = self.schedules.get(schedule_name)
         execute_query("update system_control set active_schedule_ID = %s", (schedule_ID,), False, False)
+        periodFrameManager.load_schedule()
         self.update_period_menu()
         self.period_selected(teacherFrame.period_menu.get())
 
@@ -2014,7 +1983,117 @@ class LoadingAnimation(ctk.CTkFrame):
     def stop_spinning(self):
         self.is_spinning = False
 
+#PERIOD FRAME CLASS
+class PeriodFrame(ctk.CTkScrollableFrame):
+    def __init__(self, parent, period_data):
+        #scrollable frame setup
+        super().__init__(parent)
+        self.configure(border_color = 'white', border_width = 4, label_font = ('Roboto', 30),bg_color='white')
+        enable_swipe_scroll(self)
+        self._scrollbar.configure(width=25)
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+        self.grid(row=0,column=1,sticky='nsew')
 
+        #Variables
+        self.period_ID, self.period_name = period_data
+        self.status_dict = {2: ('green', ctk.CTkImage(light_image=Image.open(script_directory + r"/images/check.png"), size = (40,30)), 5, 5),
+                        1: ('orange', ctk.CTkImage(light_image=Image.open(script_directory + r"/images/dash.png"), size = (40,40)), 4, 2),
+                        0: ('red', ctk.CTkImage(light_image=Image.open(script_directory + r"/images/x.png"), size = (30,30)), 10,2)}
+        self.students = {}
+
+        self.populate_students()
+
+    def populate_students(self):
+        global sHeight, sWidth
+        self.update_title()
+        for widget in self.winfo_children():
+            if widget.winfo_exists():
+                widget.destroy()
+        query = """SELECT sp.macID, sn.first_name, sn.last_name, sc.status, sc.scan_time
+    FROM student_periods sp
+    JOIN student_names sn ON sp.macID = sn.macID
+    LEFT JOIN scans sc ON sp.macID = sc.macID 
+    AND sc.scan_date = CURDATE() 
+    AND sc.period_ID = %s
+    WHERE sp.period_ID = %s
+    ORDER BY sc.status ASC, sn.first_name ASC"""
+        students = execute_query(query, (period_ID, period_ID))
+        
+        if students:
+            self.students = {}
+            for index, student in enumerate(students):
+                macID, first_name, last_name, status, scan_time = student
+                color, img, padx, pady = self.status_dict.get(status if status else 0)
+    
+                studentFrame = ctk.CTkFrame(self, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
+                studentFrame.pack_propagate(0)
+                
+                label = ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Space Grotesk', 15))
+                label.pack(side='left', padx=5,pady=2)
+                
+                icon = ctk.CTkLabel(studentFrame, image= img, text='', fg_color='transparent')
+                icon.pack(padx=padx,pady=pady,side='right')
+    
+                # Calculate row and column dynamically
+                row = index // 2  # Every two students per row
+                column = index % 2
+
+                self.students[macID] = (studentFrame, label, icon)
+                studentFrame.grid(row=row, column=column, pady=5, padx=3, sticky='nsw')
+        self._parent_canvas.yview_moveto(0)
+        
+    def update_student(self, macID, scan_time, status):
+        studentFrame, label, icon = self.students.get(macID)
+        name = label.cget("text").split(":")[0]
+        color, img, padx, pady = self.status_dict.get(status)
+        studentFrame.configure(fg_color = color, padx=padx, pady=pady)
+        label.configure(text= f"{name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}")
+        icon.configure(image = img)
+            
+    def update_title(self):
+        self.configure(label_text=self.period_name)
+        
+    
+
+#MANAGEMENT OF PERIOD FRAMES
+class PeriodFrameManagerClass:
+    def __init__(self, parent):
+        self.parent = parent
+        self.frames = {}
+        self.active_period = ""
+
+        #On Startup
+        self.load_schedule()
+
+    def load_schedule(self):
+        self.unload_schedule()
+        periods = execute_query("select period_ID, name from periods where schedule_ID = %s", (get_active_schedule_ID(),))
+        for period_data in periods:
+            add_period(period_data)
+    
+    def unload_schedule(self):
+        for frame in list(self.frames.values()):
+            frame.destroy()
+        self.frames.clear()
+
+    def add_period(self, period_data):
+        period_frame = PeriodFrame(self.parent, period_data)
+        self.frames[period_data[0]] = period_frame
+    
+    def remove_period(self, period_ID):
+        frame = self.frames.pop(period_ID, None)
+        if frame is not None:
+            frame.destroy()
+
+    def get_period(self, period_ID):
+        return self.frames.get(period_ID)
+    
+    def display_period(self, period_ID):
+        self.active_period = period_ID
+        tabSwap(2)
+        self.frames.get(period_ID).lift()
+    
 
 
 #ALWAYS WIDGETS (top bar)-----------------------------------------------------
@@ -2083,7 +2162,7 @@ teacherFrame = settingsClass(displayedTabContainer)
 teacherFrame.grid(row=0,column=0,columnspan=2,sticky='nsew')
 
 
-historyFrame = historyFrameClass(displayedTabContainer)
+historyFrame = historyClass(displayedTabContainer)
 historyFrame.grid(row=0,column=0,columnspan=2,sticky='nsew')
 
 #SPLIT FRAMES
@@ -2100,15 +2179,9 @@ awaitingFrame.grid(row=0,column=0,sticky='nsew')
 spinning_image = LoadingAnimation(awaitingFrame, "#333333")
 spinning_image.place(relx=.5,rely=.6,anchor='center')
 
+#Setup scrollable frames
+PeriodFrameManager = PeriodFrameManagerClass(window)
 
-#STUDENT LIST
-studentList = ctk.CTkScrollableFrame(displayedTabContainer, border_color = 'white', border_width = 4, label_text="Period A1", label_font = ('Roboto', 30),bg_color='white')
-enable_swipe_scroll(studentList)
-scrollbar = studentList._scrollbar
-scrollbar.configure(width=25)
-studentList.columnconfigure(0, weight=1)
-studentList.columnconfigure(1, weight=1)
-studentList.grid(row=0,column=1,sticky='nsew')
 
 #PERIOD LIST
 periodList = ctk.CTkFrame(displayedTabContainer, width=(sWidth*2/3), height=sHeight, border_color = 'white', border_width = 4, bg_color='white')
@@ -2145,6 +2218,8 @@ imgSuccess_Tardy_Label.grid(row=1, column=0, pady=30, sticky='n')
 success_Late_CheckExitImage = ctk.CTkImage(Image.open(script_directory+r"/images/late.png"),size=(int(sWidth/6),int(sWidth/6)))
 imgSuccess_Late_Label = ctk.CTkButton(successFrame, text='', image=success_Late_CheckExitImage, fg_color='#333333',border_color='#333333',state='disabled')
 imgSuccess_Late_Label.grid(row=1, column=0, pady=30, sticky='n')
+
+
 
 #TAB SWAPPING/POPUP DISPLAY FUNCTIONS
 timeout_thread = None
@@ -2214,7 +2289,6 @@ def tabSwap(newTAB):
             awaitingFrame.lift()
             stop_timeout()
         elif newTAB == 2: #DISPLAY LIST OF STUDENTS
-            studentList.lift()
             spinning_image.start_spinning()
             awaitingFrame.lift()
             stop_timeout()
@@ -2314,8 +2388,8 @@ def editStudentData(id):
     getStudentInfoFrame.setStudentData()
     tabSwap(6)
 
-def editAttendanceData(scan_ID, attendance, reason):
-    editAttendanceFrame.setValue(scan_ID, attendance, reason)
+def editAttendanceData(scan_ID, attendance, reason, macID, scan_time, period_ID):
+    editAttendanceFrame.setValue(scan_ID, attendance, reason, macID, scan_time, period_ID)
     display_popup(editAttendanceFrame)
 
 def successScan(time, macID, attendance):
@@ -2513,6 +2587,9 @@ class StudentMenu(ctk.CTkFrame):
         selected_periods = self.get_selected_periods()
         if first_name and last_name and selected_periods:
             if not execute_query("select macID from student_names where first_name = %s and last_name = %s and macID != %s", (first_name, last_name, self.macID)): #if there is another student with the same name
+                old_periods = [entry[0] for entry in execute_query("select period_ID from student_periods where macID = %s", (self.macID,))]
+                update_periods = list(set(selected_periods) ^ set(old_periods))
+
                 if self.editing: #DELETE OLD STUDENT DATA IF ADDING NEW
                     execute_query("""delete from student_periods where macID = %s""", (self.macID,), False, False)
                     execute_query("""delete from student_names where macID = %s""", (self.macID,), False, False)
@@ -2520,10 +2597,12 @@ class StudentMenu(ctk.CTkFrame):
                 execute_query("""INSERT INTO student_names(macID, first_name, last_name) values (%s, %s, %s)""", (self.macID,first_name.lower().title(),last_name.lower().title()), False, False)
                 for period_ID in selected_periods:
                     execute_query("INSERT INTO student_periods(macID, period_ID) values (%s, %s)", (self.macID, period_ID), False, False)
+                for period_ID in update_periods:
+                    frame = PeriodFrameManager.get_period(period_ID)
+                    frame.populate_students()
                 teacherFrame.period_selected(teacherFrame.period_menu.get())
                 self.close_popup()
             else:
-                #CONTINUE HERE ON WHAT TO DO WITH MATCHING NAMES (JUST ASK FOR MIDDLE NAME OR RESET ID)
                 self.close_popup()
                 warning_confirmation.warning_confirmation_dict['matching name'][4] = lambda i0 = first_name, i1 = last_name: self.different_name(i0, i1)
                 warning_confirmation.warning_confirmation_dict['matching name'][3] = lambda i0 = first_name, i1 = last_name : self.reset_ID_notice(i0, i1)
@@ -2863,6 +2942,9 @@ class EditAttendanceClass(ctk.CTkFrame):
         self.grid_propagate(0)
         self.attendance_mapping = {"Present": 2, "Tardy": 1, "Absent": 0}
         self.scan_ID = None
+        self.macID = None
+        self.scan_time = None
+        self.period_ID = None
 
 
         # Exit button
@@ -2928,8 +3010,11 @@ class EditAttendanceClass(ctk.CTkFrame):
         else:
             self.reason_entry.grid_forget()
 
-    def setValue(self, scan_ID, attendance, reason):
+    def setValue(self, scan_ID, attendance, reason, macID, scan_time, period_ID):
         self.scan_ID = scan_ID
+        self.macID = macID
+        self.scan_time = scan_time
+        self.period_ID = period_ID
         self.attendance_dropdown.set(attendance)
         self.reason_entry.grid_forget()
         if reason:
@@ -2965,6 +3050,8 @@ class EditAttendanceClass(ctk.CTkFrame):
         self.hide()
         self.reason_entry.delete(0, 'end')
         execute_query("""UPDATE scans SET status = %s, reason = %s WHERE scan_ID = %s""",(attendance_value, reason, self.scan_ID), False, False)
+        frame = PeriodFrameManager.get_period(period_ID)
+        frame.update_student(self.macID, self.scan_time, attendance_value)
         self.error_label.grid_forget()
         historyFrame.fetch_students()
 
