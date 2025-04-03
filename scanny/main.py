@@ -2047,9 +2047,11 @@ class PeriodFrame(ctk.CTkScrollableFrame):
         studentFrame, label, icon = self.students.get(macID)
         name = label.cget("text").split(":")[0]
         color, img, padx, pady = self.status_dict.get(status)
-        studentFrame.configure(fg_color = color, padx=padx, pady=pady)
+        studentFrame.configure(fg_color = color)
         label.configure(text= f"{name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}")
+        icon.pack_forget()
         icon.configure(image = img)
+        icon.pack(padx=padx,pady=pady,side='right')
             
     def update_title(self):
         self.configure(label_text=self.period_name)
