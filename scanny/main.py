@@ -2637,39 +2637,40 @@ getStudentInfoFrame = StudentMenu(window)
 class editInternetClass(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
-        self.configure(width=sWidth, height=sHeight,border_width=2,border_color='white',bg_color='white')
+        self.configure(width=sWidth, height=sHeight, border_width=2, border_color='white', bg_color='white')
         self.grid_propagate(0)
+        self.pack_propagate(0)
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight = 1)
-        self.rowconfigure(1, weight = 3)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=3)
 
-        #title
-        self.title_label = ctk.CTkLabel(self, text = "Connect To Wifi",font=('Space Grotesk', 28, 'bold'), text_color= "#1f6aa5")
+        # Title label
+        self.title_label = ctk.CTkLabel(self, text="Connect To Wifi", font=('Space Grotesk', 28, 'bold'), text_color="#1f6aa5")
         self.title_label.grid(row=0, column=0, pady=(40, 5), sticky='n')
 
-        #note
-        self.note_label = ctk.CTkLabel(self, text = "*Enter the name and password for the internet you would like to connect to.*",font=('Space Grotesk', 18), text_color= "white")
+        # Note label
+        self.note_label = ctk.CTkLabel(self, text="*Enter the name and password for the internet you would like to connect to.*", font=('Space Grotesk', 18), text_color="white")
         self.note_label.grid(row=0, column=0, pady=(75, 5), sticky='n')
 
-        #SSID entry
-        self.name_entry = ctk.CTkEntry(self, placeholder_text="Network name (SSID)...",font=('Space Grotesk', 18), width = 500, height = 60)
+        # SSID entry
+        self.name_entry = ctk.CTkEntry(self, placeholder_text="Network name (SSID)...", font=('Space Grotesk', 18), width=500, height=60)
         self.name_entry.grid(row=1, column=0, pady=(10, 5), sticky='n')
         self.name_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.name_entry))
 
-        #Password entry
-        self.password_entry = ctk.CTkEntry(self, placeholder_text = "Network password...",font=('Space Grotesk', 18), width = 500, height = 60)
+        # Password entry
+        self.password_entry = ctk.CTkEntry(self, placeholder_text="Network password...", font=('Space Grotesk', 18), width=500, height=60)
         self.password_entry.grid(row=1, column=0, pady=(90, 5), sticky='n')
         self.password_entry.bind("<FocusIn>", lambda event: self.set_current_entry(self.password_entry))
 
-        #Input Error Label
-        self.error_label = ctk.CTkLabel(self, text="Input a network name!", text_color='white', fg_color= 'red', font=('Space Grotesk', 18))
+        # Input Error Label
+        self.error_label = ctk.CTkLabel(self, text="Input a network name!", text_color='white', fg_color='red', font=('Space Grotesk', 18))
 
-        #Exit button
-        self.exit_button = ctk.CTkButton(self, text = "X",font=('Space Grotesk', 25, 'bold'), height = 70, width = 70, command = self.close_popup)
-        self.exit_button.place(relx = .915, rely=.02)
+        # Exit button
+        self.exit_button = ctk.CTkButton(self, text="X", font=('Space Grotesk', 25, 'bold'), height=70, width=70, command=self.close_popup)
+        self.exit_button.place(relx=.915, rely=.02)
 
-        #Submit button
-        self.submit_button = ctk.CTkButton(self, text = "Submit",font=('Space Grotesk', 20, 'bold'), height = 50, width = 220, command = self.submit)
+        # Submit button
+        self.submit_button = ctk.CTkButton(self, text="Submit", font=('Space Grotesk', 20, 'bold'), height=50, width=220, command=self.submit)
         self.submit_button.grid(row=1, column=0, pady=(190, 5), sticky='n')
 
     def set_current_entry(self, entry):
@@ -2694,56 +2695,32 @@ class editInternetClass(ctk.CTkFrame):
             self.password_entry.delete(0, 'end')
             self.error_label.grid_forget()
 
-            wpa_supplicant_path = "/etc/wpa_supplicant/wpa_supplicant.conf"
-
             try:
-                # Write a new configuration to wpa_supplicant.conf
-                subprocess.run(
-                    ['sudo', 'sh', '-c', f'echo "country=US" > {wpa_supplicant_path}'],
-                    check=True
-                )
-                # 2. Append the ctrl_interface line.
-                subprocess.run(
-                    ['sudo', 'sh', '-c', f'echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" >> {wpa_supplicant_path}'],
-                    check=True
-                )
-                # 3. Append the update_config line.
-                subprocess.run(
-                    ['sudo', 'sh', '-c', f'echo "update_config=1" >> {wpa_supplicant_path}'],
-                    check=True
-                )
-                # 4. Append an empty line.
-                subprocess.run(
-                    ['sudo', 'sh', '-c', f'echo "" >> {wpa_supplicant_path}'],
-                    check=True
-                )
-                # 5. Append the network block with key_mgmt.
+                # Use nmcli to connect to the WiFi network.
                 if password:
+                    # For secured networks, include the password
                     subprocess.run(
-                        ['sudo', 'sh', '-c',
-                         f"printf 'network={{\\n\\tssid=\"{ssid}\"\\n\\tpsk=\"{password}\"\\n\\tkey_mgmt=WPA-PSK\\n}}\\n' >> {wpa_supplicant_path}"],
+                        ['nmcli', 'device', 'wifi', 'connect', ssid, 'password', password],
                         check=True
                     )
                 else:
+                    # For open networks
                     subprocess.run(
-                        ['sudo', 'sh', '-c',
-                         f"printf 'network={{\\n\\tssid=\"{ssid}\"\\n\\tkey_mgmt=NONE\\n}}\\n' >> {wpa_supplicant_path}"],
+                        ['nmcli', 'device', 'wifi', 'connect', ssid],
                         check=True
                     )
 
-                # Restart the networking service to apply the new config
-                subprocess.run(['sudo', 'systemctl', 'restart', 'NetworkManager'], check=True)
-
+                # Optionally, you can initiate a new thread to verify connectivity.
                 loading_indicator.start_spinning()
                 display_popup(loading_indicator)
 
-                #LAUNCH NEW THREAD
+                # Launch new thread to check connection status.
                 thread = threading.Thread(target=self.check_connection_thread, args=(ssid,))
-                thread.daemon = True  # so it exits when the main program exits
+                thread.daemon = True  # Ensures thread exits with the main program.
                 thread.start()
 
             except subprocess.CalledProcessError as e:
-                # Handle any errors that occur during the process
+                # Handle errors during the connection process.
                 warning_confirmation.warning_confirmation_dict["network fail"][1] = (
                     f"Failed to connect to {ssid}. Error: {e}"
                 )
@@ -2752,33 +2729,28 @@ class editInternetClass(ctk.CTkFrame):
             self.error_label.grid(row=1, column=0, pady=(90, 0), sticky='n')
 
     def check_connection_thread(self, ssid):
-        # Allow some time for the interface to associate with the new network.
-        # Then poll for the connection status.
+        # Wait and then poll for connection status.
         connected = False
-        max_attempts = 8  # For a total wait of roughly 30 seconds (10 * 3 sec)
+        max_attempts = 8  # Approximately 24 seconds total if each sleep is 3 seconds.
         for attempt in range(max_attempts):
-            time.sleep(3)  # wait a few seconds between checks
-
-            # Check current connected SSID (using iwgetid)
+            time.sleep(3)
+            # Check current connected SSID using iwgetid.
             ssid_result = subprocess.run(['iwgetid', '--raw'], capture_output=True, text=True)
             current_ssid = ssid_result.stdout.strip()
-
-            # Check that we’re connected to the expected SSID
             if current_ssid == ssid:
-                # Optionally, verify external connectivity by pinging an external server
+                # Optionally, verify external connectivity (e.g., ping a public DNS).
                 ping_result = subprocess.run(
-                    ['ping', '-c', '1', '8.8.8.8'],  # Google DNS as an example
+                    ['ping', '-c', '1', '8.8.8.8'],
                     capture_output=True, text=True
                 )
                 if ping_result.returncode == 0:
                     connected = True
                     break
-        window.after(0, lambda i0 = ssid, i1 = connected: self.finish_check_connection(i0, i1))
+        window.after(0, lambda i0=ssid, i1=connected: self.finish_check_connection(i0, i1))
 
     def finish_check_connection(self, ssid, connected):
         window.after(0, lambda: loading_indicator.stop_spinning())
-        window.after(0, lambda i0 = loading_indicator: hide_popup(i0))
-
+        window.after(0, lambda i0=loading_indicator: hide_popup(i0))
         if connected:
             warning_confirmation.warning_confirmation_dict["network success"][1] = f"Successfully connected to {ssid}!"
             window.after(0, lambda: warning_confirmation.config("network success"))
