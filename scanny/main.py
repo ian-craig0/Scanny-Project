@@ -1831,7 +1831,7 @@ class settingsClass(ctk.CTkFrame):
     def schedule_selected(self, schedule_name):
         schedule_ID = self.schedules.get(schedule_name)
         execute_query("update system_control set active_schedule_ID = %s", (schedule_ID,), False, False)
-        periodFrameManager.load_schedule()
+        PeriodFrameManager.load_schedule()
         self.update_period_menu()
         self.period_selected(teacherFrame.period_menu.get())
 
