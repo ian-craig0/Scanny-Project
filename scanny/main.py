@@ -160,7 +160,6 @@ def refresh_teacher_frame():
 def close_success_scan():
     time.sleep(2)
     window.after(0, lambda: successFrame.lower())
-    #window.after(1, tabSwap, 1)
 
 #CHANGING DATA FUNCTIONS
 def tempResetArrivalTimes():
@@ -177,15 +176,16 @@ def tempResetArrivalTimes():
     )
 
 def factory_reset():
-    print('factory resetting')
-    #with db.cursor() as factory_curs:
-    #execute_query(factory_curs,"TRUNCATE TABLE PERIODS", None, False, False)
-    #execute_query(factory_curs,"TRUNCATE TABLE ACTIVITY", None, False, False)
-    #execute_query(factory_curs,"TRUNCATE TABLE SCANS", None, False, False)
-    #execute_query(factory_curs,"TRUNCATE TABLE MASTER", None, False, False)
-    #execute_query(factory_curs,"TRUNCATE TABLE TEACHERS", None, False, False)
-    #execute_query(factory_curs,"INSERT INTO TEACHERS (A_B, ACTIVITY, SCHEDULE, teacherPW) values ('A', 0, '', '')", None, False, False)
-
+    execute_query("TRUNCATE TABLE periods", None, False, False)
+    execute_query("TRUNCATE TABLE scans", None, False, False)
+    execute_query("TRUNCATE TABLE schedule_days", None, False, False)
+    execute_query("TRUNCATE TABLE schedules", None, False, False)
+    execute_query("TRUNCATE TABLE student_names", None, False, False)
+    execute_query("TRUNCATE TABLE student_periods", None, False, False)
+    execute_query("TRUNCATE TABLE system_control", None, False, False)
+    query = 
+    execute_query("INSERT INTO system_control (master_pass, timeout_time, active_schedule_ID) values (%s, %s, %s)", ('', 300, None), False, False)
+    os.execl(sys.executable, sys.executable, *sys.argv)
 
 #TIMING FUNCTIONS
 def newDay():
@@ -247,9 +247,6 @@ AND s.macID IS NULL;"""
     active_schedule_ID = get_active_schedule_ID()
     starting_period = execute_query(starting_period_query, (date.today().weekday(), time, active_schedule_ID), True)
     ending_period = execute_query(ending_period_query, (date.today().weekday(), time, active_schedule_ID), True)
-    if starting_period:
-        if currentTAB == 1 or currentTAB == 2:
-            window.after(0, lambda i0 = starting_period[0]: PeriodFrameManager.display_period(i0))
 
     if ending_period:
         tabSwap(1)
@@ -257,6 +254,12 @@ AND s.macID IS NULL;"""
         absent_students = execute_query(missing_student_query, (ending_per_ID, ending_per_ID))
         absent_scan_data = [(ending_per_ID, active_schedule_ID, macID[0], curr_date, -1, 0, None) for macID in absent_students]
         execute_query("""INSERT INTO scans (period_ID, schedule_ID, macID, scan_date, scan_time, status, reason) values (%s, %s, %s, %s, %s, %s, %s)""", absent_scan_data, False, False, True)
+        frame = PeriodFrameManager.get_period(ending_per_ID)
+        frame.populate_students() #RELOADS THE STUDENT LIST TO PLACE TARDIES/ABSENCES ON TOP
+    
+    if starting_period:
+        if currentTAB == 1 or currentTAB == 2:
+            window.after(0, lambda i0 = starting_period[0]: PeriodFrameManager.display_period(i0))
 
 #TIME LOOP
 prevDate = date.today() - timedelta(days=1)
