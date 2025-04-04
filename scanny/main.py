@@ -2700,13 +2700,13 @@ class editInternetClass(ctk.CTkFrame):
                 if password:
                     # For secured networks, include the password
                     subprocess.run(
-                        ['nmcli', 'device', 'wifi', 'connect', ssid, 'password', password],
+                        ['sudo', 'nmcli', 'device', 'wifi', 'connect', ssid, 'password', password],
                         check=True
                     )
                 else:
                     # For open networks
                     subprocess.run(
-                        ['nmcli', 'device', 'wifi', 'connect', ssid],
+                        ['sudo', 'nmcli', 'device', 'wifi', 'connect', ssid],
                         check=True
                     )
 
