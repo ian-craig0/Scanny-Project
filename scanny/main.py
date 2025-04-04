@@ -2639,7 +2639,6 @@ class editInternetClass(ctk.CTkFrame):
         super().__init__(master)
         self.configure(width=sWidth, height=sHeight,border_width=2,border_color='white',bg_color='white')
         self.grid_propagate(0)
-        self.pack_propagate(0)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight = 1)
         self.rowconfigure(1, weight = 3)
@@ -2733,7 +2732,7 @@ class editInternetClass(ctk.CTkFrame):
                     )
 
                 # Restart the networking service to apply the new config
-                subprocess.run(['sudo', 'systemctl', 'restart', 'dhcpcd'], check=True)
+                subprocess.run(['sudo', 'systemctl', 'restart', 'NetworkManager'], check=True)
 
                 loading_indicator.start_spinning()
                 display_popup(loading_indicator)
