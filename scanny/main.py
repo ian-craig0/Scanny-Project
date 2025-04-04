@@ -337,7 +337,6 @@ def checkIN():
                                                 frame = PeriodFrameManager.get_period(period_ID)
                                                 window.after(0, lambda i0 = ID, i1 = scan_time, i2 = status: frame.update_student(i0, i1, i2))
                                                 sleep_ms(1500)
-                                                #window.after(0, lambda i0 = period_ID: studentListPop(i0))
                                         else: #IF ONE OF THEIR PERIODS IS not MATCHING WITH THE CURRENT PERIOD
                                             continue
                                     if notInPeriod:
