@@ -183,7 +183,6 @@ def factory_reset():
     execute_query("TRUNCATE TABLE student_names", None, False, False)
     execute_query("TRUNCATE TABLE student_periods", None, False, False)
     execute_query("TRUNCATE TABLE system_control", None, False, False)
-    query = 
     execute_query("INSERT INTO system_control (master_pass, timeout_time, active_schedule_ID) values (%s, %s, %s)", ('', 300, None), False, False)
     os.execl(sys.executable, sys.executable, *sys.argv)
 
