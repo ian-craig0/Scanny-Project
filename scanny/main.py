@@ -1832,8 +1832,10 @@ class settingsClass(ctk.CTkFrame):
         schedule_ID = self.schedules.get(schedule_name)
         execute_query("update system_control set active_schedule_ID = %s", (schedule_ID,), False, False)
         PeriodFrameManager.load_schedule()
-        self.update_period_menu()
+        teacherFrame.update_period_menu()
+        teacherFrame.update_schedule_menu()
         self.period_selected(teacherFrame.period_menu.get())
+        teacherFrame.lift()
 
     def period_selected(self, period_name):
         global currentPopup
@@ -2300,7 +2302,7 @@ def tabSwap(newTAB):
             historyFrame.fetch_students()
             historyFrame.lift()
             start_timeout()
-        elif newTAB == 4: #DISPLAY TEACHER MODE FRAME
+        elif newTAB == 4: #DISPLAY SETTINGS FRAME
             spinning_image.stop_spinning()
             teacherFrame.update_period_menu()
             teacherFrame.update_schedule_menu()
