@@ -646,15 +646,15 @@ class setupClass(ctk.CTkFrame):
         self.PI_RF_start_minute_var = ctk.StringVar(value = '00')
 
         #START HOUR SELECTORS
-        self.PI_RF_start_hour_up = ctk.CTkButton(self.PI_RF_start_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_start_hour_var, +1))
+        self.PI_RF_start_hour_up = AcceleratingButton(self.PI_RF_start_frame, command = lambda: self.change_hour(self.PI_RF_start_hour_var, +1), text="↑", font = ('Space Grotesk', 18, 'bold'))
         self.PI_RF_start_hour_up.grid(row=0, column=0,pady=(25,5))
-        self.PI_RF_start_hour_down = ctk.CTkButton(self.PI_RF_start_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_start_hour_var, -1))
+        self.PI_RF_start_hour_down = AcceleratingButton(self.PI_RF_start_frame, command = lambda: self.change_hour(self.PI_RF_start_hour_var, -1), text="↓", font = ('Space Grotesk', 18, 'bold'))
         self.PI_RF_start_hour_down.grid(row=1, column=0,pady=(5,10))
 
         #START MINUTE SELECTORS
-        self.PI_RF_start_minute_up = ctk.CTkButton(self.PI_RF_start_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_start_minute_var, +1))
+        self.PI_RF_start_minute_up = AcceleratingButton(self.PI_RF_start_frame, command = lambda: self.change_minute(self.PI_RF_start_minute_var, +1), text="↑", font = ('Space Grotesk', 18, 'bold'))
         self.PI_RF_start_minute_up.grid(row=0, column=2,pady=(25,5))
-        self.PI_RF_start_minute_down = ctk.CTkButton(self.PI_RF_start_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_start_minute_var, -1))
+        self.PI_RF_start_minute_down = AcceleratingButton(self.PI_RF_start_frame, command = lambda: self.change_minute(self.PI_RF_start_minute_var, -1), text="↓", font = ('Space Grotesk', 18, 'bold'))
         self.PI_RF_start_minute_down.grid(row=1, column=2,pady=(5,10))
 
         #START LABELS
@@ -676,15 +676,15 @@ class setupClass(ctk.CTkFrame):
         self.PI_RF_end_minute_var = ctk.StringVar(value = '00')
 
         #END HOUR SELECTORS
-        self.PI_RF_end_hour_up = ctk.CTkButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, +1))
+        self.PI_RF_end_hour_up = AcceleratingButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, +1))
         self.PI_RF_end_hour_up.grid(row=2, column=0,pady=(25,5))
-        self.PI_RF_end_hour_down = ctk.CTkButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, -1))
+        self.PI_RF_end_hour_down = AcceleratingButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_hour(self.PI_RF_end_hour_var, -1))
         self.PI_RF_end_hour_down.grid(row=3, column=0,pady=(5,10))
 
         #END MINUTE SELECTORS
-        self.PI_RF_end_minute_up = ctk.CTkButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, +1))
+        self.PI_RF_end_minute_up = AcceleratingButton(self.PI_RF_end_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, +1))
         self.PI_RF_end_minute_up.grid(row=2, column=2,pady=(25,5))
-        self.PI_RF_end_minute_down = ctk.CTkButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, -1))
+        self.PI_RF_end_minute_down = AcceleratingButton(self.PI_RF_end_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_end_minute_var, -1))
         self.PI_RF_end_minute_down.grid(row=3, column=2,pady=(5,10))
 
         #END LABELS
@@ -705,9 +705,9 @@ class setupClass(ctk.CTkFrame):
         self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
 
         #TARDY MINUTE SELECTORS
-        self.PI_RF_tardy_minute_up = ctk.CTkButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
+        self.PI_RF_tardy_minute_up = AcceleratingButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
         self.PI_RF_tardy_minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
-        self.PI_RF_tardy_minute_down = ctk.CTkButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
+        self.PI_RF_tardy_minute_down = AcceleratingButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
         self.PI_RF_tardy_minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
 
         #TARDY LABELS
@@ -3397,9 +3397,9 @@ class timeoutMenuClass(ctk.CTkFrame):
         self.selection_frame_var = ctk.StringVar(value = '05')
 
         #TARDY MINUTE SELECTORS
-        self.minute_up = ctk.CTkButton(self.selection_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.selection_frame_var, +1))
+        self.minute_up = AcceleratingButton(self.selection_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.selection_frame_var, +1))
         self.minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
-        self.minute_down = ctk.CTkButton(self.selection_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.selection_frame_var, -1))
+        self.minute_down = AcceleratingButton(self.selection_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.selection_frame_var, -1))
         self.minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
 
         #TARDY LABELS
