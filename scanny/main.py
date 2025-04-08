@@ -428,17 +428,17 @@ class setupClass(ctk.CTkFrame):
         self.period_list_frame = ctk.CTkFrame(self)
         self.period_list_frame.grid(row=0, column=0, sticky='nsew')
 
-        #BACK BUTTON (period list frame)
-        self.PL_back_button = ctk.CTkButton(self.period_list_frame, image = self.back_button_image, text = '', height = 60, width = 100)
-        self.PL_back_button.place(rely=.01, relx = .79)
 
+        #Period List Scrollable Frame
         self.PL_scrollable_frame = ctk.CTkScrollableFrame(self.period_list_frame, width=sWidth*3/4,height=sHeight*3/4, label_font=('Space Grotesk', 25, 'bold'))
         enable_swipe_scroll(self.PL_scrollable_frame)
         self.PL_scrollable_frame._scrollbar.configure(width=25)
         self.PL_scrollable_frame.columnconfigure(0, weight=1)
         self.PL_scrollable_frame.place(relx=0.5, rely=0.5, anchor='center')
 
-
+        #BACK BUTTON (period list frame)
+        self.PL_back_button = ctk.CTkButton(self.period_list_frame, image = self.back_button_image, text = '', height = 60, width = 100)
+        self.PL_back_button.place(rely=.01, relx = .79)
 
 
         #Setup schedule options frame (change commands based on schedule selected) 3
