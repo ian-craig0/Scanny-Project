@@ -705,9 +705,9 @@ class setupClass(ctk.CTkFrame):
         self.PI_RF_tardy_minute_var = ctk.StringVar(value = '05')
 
         #TARDY MINUTE SELECTORS
-        self.PI_RF_tardy_minute_up = AcceleratingButton(self.PI_RF_tardy_frame, text="↑", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1))
+        self.PI_RF_tardy_minute_up = AcceleratingButton(self.PI_RF_tardy_frame, command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, +1), text="↑", font = ('Space Grotesk', 18, 'bold'))
         self.PI_RF_tardy_minute_up.grid(row=4, column=2,pady=(25,5),padx=10)
-        self.PI_RF_tardy_minute_down = AcceleratingButton(self.PI_RF_tardy_frame, text="↓", font = ('Space Grotesk', 18, 'bold'),command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1))
+        self.PI_RF_tardy_minute_down = AcceleratingButton(self.PI_RF_tardy_frame, command = lambda: self.change_minute(self.PI_RF_tardy_minute_var, -1), text="↓", font = ('Space Grotesk', 18, 'bold'))
         self.PI_RF_tardy_minute_down.grid(row=5, column=2,pady=(5,10),padx=10)
 
         #TARDY LABELS
