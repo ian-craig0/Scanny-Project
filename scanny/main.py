@@ -1610,6 +1610,10 @@ class historyClass(ctk.CTkFrame):
         self.nothing_label = ctk.CTkLabel(self.scrollable_frame, text='No results found for your search query!', font=('Space Grotesk', 17), text_color='gray')
         self.nothing_label.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
+    def update_scrollableFrame_buttons(self, state):
+        for button in self.scrollable_frame.winfo_children():
+            button.configure(state=state)
+    
     # Function to gather all data on submit
     def fetch_students(self):
         filters = []
@@ -2364,8 +2368,10 @@ def update_buttons(new_state, popup = None):
     if currentTAB == 3 or currentTAB == 4:
         if currentTAB == 4:
             teacherFrame.update_scrollableFrame_buttons(new_state)
+        elif currentTAB == 3:
+            historyFrame.update_scrollableFrame_buttons(new_state)
         for frame in parentDict.get(currentTAB).winfo_children():
-            if isinstance(frame, ctk.CTkFrame) or isinstance(frame, ctk.CTkScrollableFrame):
+            if isinstance(frame, ctk.CTkFrame):
                 for widget in frame.winfo_children():
                     if isinstance(widget, ctk.CTkButton) or isinstance(widget, ctk.CTkCheckBox):
                         widget.configure(state=new_state)
