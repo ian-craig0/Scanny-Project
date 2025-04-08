@@ -2365,7 +2365,7 @@ def update_buttons(new_state, popup = None):
         if currentTAB == 4:
             teacherFrame.update_scrollableFrame_buttons(new_state)
         for frame in parentDict.get(currentTAB).winfo_children():
-            if isinstance(frame, ctk.CTkFrame):
+            if isinstance(frame, ctk.CTkFrame) or isinstance(frame, ctk.CTkScrollableFrame):
                 for widget in frame.winfo_children():
                     if isinstance(widget, ctk.CTkButton) or isinstance(widget, ctk.CTkCheckBox):
                         widget.configure(state=new_state)
