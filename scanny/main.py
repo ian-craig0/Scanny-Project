@@ -1,4 +1,4 @@
-#SYSTEM IMPORTS
+x#SYSTEM IMPORTS
 import subprocess
 import os
 import threading
@@ -395,6 +395,44 @@ def enable_swipe_scroll(scrollable_frame):
 def open_dropdown(combobox, event):
     combobox._open_dropdown_menu()
 
+#ACCELERATING BUTTON FUNCTION
+class AcceleratingButton(ctk.CTkButton):
+    def __init__(self, master=None, command=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self.command = command
+        self.initial_delay = 500
+        self.current_delay = 500
+        self.acceleration = 100
+        self.min_delay = 80
+        self._job = None
+
+        # Bind mouse events
+        self.bind('<ButtonPress-1>', self._start_repeat)
+        self.bind('<ButtonRelease-1>', self._stop_repeat)
+        self.bind('<Leave>', self._stop_repeat)  # Stop if mouse leaves button area
+
+    def _start_repeat(self, event):
+        # Reset delay on new press
+        self.current_delay = self.initial_delay
+        # Call immediately, then schedule the next call.
+        self._run_command()
+
+    def _run_command(self):
+        if self.command is not None:
+            self.command()  # perform the assigned action
+
+        # Accelerate: reduce current delay but clamp it to min_delay.
+        self.current_delay = max(self.min_delay, self.current_delay - self.acceleration)
+
+        # Schedule next repeat
+        self._job = self.after(self.current_delay, self._run_command)
+
+    def _stop_repeat(self, event):
+        if self._job is not None:
+            self.after_cancel(self._job)
+            self._job = None
+
+
 #FRAME CLASSES
 class setupClass(ctk.CTkFrame):
     def __init__(self, parent):
@@ -531,9 +569,9 @@ class setupClass(ctk.CTkFrame):
         self.SI_AF_value_label.grid(row=1,column=0,padx=5,pady=5)
 
         #ABSENCE MINUTE SELECTORS
-        self.PI_RF_absent_minute_up = ctk.CTkButton(self.SI_absence_frame, height=60,font=('Space Grotesk', 20, 'bold'),text="↑", command = lambda: self.change_minute(self.SI_AF_minute_var, +1))
+        self.PI_RF_absent_minute_up = AcceleratingButton(self.SI_absence_frame, command = lambda: self.change_minute(self.SI_AF_minute_var, +1), height=60,font=('Space Grotesk', 20, 'bold'),text="↑")
         self.PI_RF_absent_minute_up.grid(row=0, column=1,pady=5,padx=5)
-        self.PI_RF_absent_minute_down = ctk.CTkButton(self.SI_absence_frame, height = 60,font=('Space Grotesk', 20, 'bold'),text="↓", command = lambda: self.change_minute(self.SI_AF_minute_var, -1))
+        self.PI_RF_absent_minute_down = AcceleratingButton(self.SI_absence_frame, command = lambda: self.change_minute(self.SI_AF_minute_var, -1), height = 60,font=('Space Grotesk', 20, 'bold'),text="↓")
         self.PI_RF_absent_minute_down.grid(row=1, column=1,pady=5,padx=5)
 
         #ABSENCE UPDATE LABEL CODE
