@@ -2054,10 +2054,10 @@ class studentFrameClass(ctk.CTkFrame):
         self.studentFrame.pack_propagate(0)
         self.studentFrame.pack(expand=True, fill = "both")
         
-        self.label = ctk.CTkLabel(studentFrame, text = f"{self.first_name} {self.last_name}: {timeConvert(self.scan_time) if self.scan_time is not None and self.scan_time != -1 else ('Present' if self.status == 2 else ('Tardy' if self.status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15))
+        self.label = ctk.CTkLabel(self.studentFrame, text = f"{self.first_name} {self.last_name}: {timeConvert(self.scan_time) if self.scan_time is not None and self.scan_time != -1 else ('Present' if self.status == 2 else ('Tardy' if self.status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15))
         self.label.pack(side='left', padx=5,pady=2)
         
-        self.icon = ctk.CTkLabel(studentFrame, image= self.img, text='', fg_color='transparent')
+        self.icon = ctk.CTkLabel(self.studentFrame, image= self.img, text='', fg_color='transparent')
         self.icon.pack(padx=self.padx,pady=self.pady,side='right')
 
     def update_student_frame(self, macID, scan_time, status, color, img, padx, pady):
