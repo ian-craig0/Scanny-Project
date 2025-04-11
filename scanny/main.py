@@ -2034,7 +2034,7 @@ class studentFrameClass(ctk.CTkFrame):
     def __init__(self, parent, macID, first_name, last_name, status, scan_time, scan_ID, color, img, padx, pady, **kwargs):
         super().__init__(parent, **kwargs)
         global sHeight, sWidth
-        self.configure(height=int(0.1*sHeight),width=0.30859375*sWidth)
+        self.configure(height=int(0.09*sHeight),width=0.30859375*sWidth)
         self.pack_propagate(0)
 
         #object variables
@@ -2060,6 +2060,9 @@ class studentFrameClass(ctk.CTkFrame):
         self.icon = ctk.CTkLabel(self.studentFrame, image= self.img, text='', fg_color='transparent')
         self.icon.pack(padx=self.padx,pady=self.pady,side='right')
 
+        #Bathroom Indicator
+        #self.bathroom_label = ctk.CTkLabel(self.studentFrame, text_color='white', font=('Roboto', 15))
+
     def update_student_frame(self, macID, scan_time, status, color, img, padx, pady):
         name = self.label.cget("text").split(":")[0]
         self.studentFrame.configure(fg_color = color)
@@ -2067,6 +2070,8 @@ class studentFrameClass(ctk.CTkFrame):
         self.icon.pack_forget()
         self.icon.configure(image = img)
         self.icon.pack(padx=padx,pady=pady,side='right')
+
+    
 
 
         
