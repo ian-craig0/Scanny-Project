@@ -2034,7 +2034,7 @@ class studentFrameClass(ctk.CTkFrame):
     def __init__(self, parent, macID, first_name, last_name, status, scan_time, scan_ID, color, img, padx, pady, **kwargs):
         super().__init__(parent, **kwargs)
         global sHeight, sWidth
-        self.configure(height=int(0.01*sHeight),width=0.30859375*sWidth)
+        self.configure(height=int(0.1*sHeight),width=0.30859375*sWidth)
         self.pack_propagate(0)
 
         #object variables
