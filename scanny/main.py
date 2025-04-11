@@ -2113,7 +2113,7 @@ class PeriodFrame(ctk.CTkScrollableFrame):
                 macID, first_name, last_name, status, scan_time, scan_ID = student
                 color, img, padx, pady = self.status_dict.get(status if status else 0)
 
-                student_frame = StudentFrameClass(self, macID, first_name, last_name, status, scan_time, scan_ID, color, img, padx,pady)
+                student_frame = studentFrameClass(self, macID, first_name, last_name, status, scan_time, scan_ID, color, img, padx,pady)
                 
                 # Calculate row and column dynamically
                 row = index // 2  # Every two students per row
