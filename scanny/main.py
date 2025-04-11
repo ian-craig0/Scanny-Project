@@ -2035,6 +2035,7 @@ class studentFrameClass(ctk.CTkFrame):
         super().__init__(parent, **kwargs)
         global sHeight, sWidth
         self.configure(height=int(0.075*sHeight),width=0.30859375*sWidth, border_width=2, border_color='white')
+        self.pack_propagate(0)
 
         #object variables
         self.macID = macID
@@ -2051,7 +2052,6 @@ class studentFrameClass(ctk.CTkFrame):
         
         #Creating student frame
         self.studentFrame = ctk.CTkFrame(self, fg_color = self.color)
-        self.studentFrame.pack_propagate(0)
         self.studentFrame.pack(expand=True, fill = "both")
         
         self.label = ctk.CTkLabel(self.studentFrame, text = f"{self.first_name} {self.last_name}: {timeConvert(self.scan_time) if self.scan_time is not None and self.scan_time != -1 else ('Present' if self.status == 2 else ('Tardy' if self.status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15))
