@@ -2029,6 +2029,47 @@ class LoadingAnimation(ctk.CTkFrame):
     def stop_spinning(self):
         self.is_spinning = False
 
+#Student Frame Class
+class studentFrameClass(ctk.CTkFrame):
+    def __init__(self, parent, macID, first_name, last_name, status, scan_time, scan_ID, color, img, padx, pady, **kwargs):
+        super().__init__(parent, **kwargs)
+        global sHeight, sWidth
+        self.configure(height=int(0.075*sHeight),width=0.30859375*sWidth, border_width=2, border_color='white')
+
+        #object variables
+        self.macID = macID
+        self.first_name = first_name
+        self.last_name = last_name
+        self.status = status
+        self.scan_time = scan_time
+        self.scan_ID = scan_ID
+        self.color = color
+        self.img = img
+        self.padx = padx
+        self.pady = pady
+        
+        
+        #Creating student frame
+        self.studentFrame = ctk.CTkFrame(self, fg_color = self.color)
+        self.studentFrame.pack_propagate(0)
+        self.studentFrame.pack(expand=True, fill = "both")
+        
+        self.label = ctk.CTkLabel(studentFrame, text = f"{self.first_name} {self.last_name}: {timeConvert(self.scan_time) if self.scan_time is not None and self.scan_time != -1 else ('Present' if self.status == 2 else ('Tardy' if self.status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15))
+        self.label.pack(side='left', padx=5,pady=2)
+        
+        self.icon = ctk.CTkLabel(studentFrame, image= self.img, text='', fg_color='transparent')
+        self.icon.pack(padx=self.padx,pady=self.pady,side='right')
+
+    def update_student_frame(self, macID, scan_time, status, color, img, padx, pady):
+        name = self.label.cget("text").split(":")[0]
+        self.studentFrame.configure(fg_color = color)
+        self.label.configure(text= f"{name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}")
+        self.icon.pack_forget()
+        self.icon.configure(image = img)
+        self.icon.pack(padx=padx,pady=pady,side='right')
+
+
+        
 #PERIOD FRAME CLASS
 class PeriodFrame(ctk.CTkScrollableFrame):
     def __init__(self, parent, period_data):
@@ -2056,7 +2097,7 @@ class PeriodFrame(ctk.CTkScrollableFrame):
         for widget in self.winfo_children():
             if widget.winfo_exists():
                 widget.destroy()
-        query = """SELECT sp.macID, sn.first_name, sn.last_name, sc.status, sc.scan_time
+        query = """SELECT sp.macID, sn.first_name, sn.last_name, sc.status, sc.scan_time, sc.scan_ID
     FROM student_periods sp
     JOIN student_names sn ON sp.macID = sn.macID
     LEFT JOIN scans sc ON sp.macID = sc.macID 
@@ -2069,35 +2110,23 @@ class PeriodFrame(ctk.CTkScrollableFrame):
         if students:
             self.students = {}
             for index, student in enumerate(students):
-                macID, first_name, last_name, status, scan_time = student
+                macID, first_name, last_name, status, scan_time, scan_ID = student
                 color, img, padx, pady = self.status_dict.get(status if status else 0)
-    
-                studentFrame = ctk.CTkFrame(self, fg_color = color,height=int(0.075*sHeight),width=0.30859375*sWidth,border_width=2, border_color='white')
-                studentFrame.pack_propagate(0)
+
+                student_frame = StudentFrameClass(self, macID, first_name, last_name, status, scan_time, scan_ID, color, img, padx,pady)
                 
-                label = ctk.CTkLabel(studentFrame, text = f"{first_name} {last_name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}", text_color='white', font=('Roboto', 15))
-                label.pack(side='left', padx=5,pady=2)
-                
-                icon = ctk.CTkLabel(studentFrame, image= img, text='', fg_color='transparent')
-                icon.pack(padx=padx,pady=pady,side='right')
-    
                 # Calculate row and column dynamically
                 row = index // 2  # Every two students per row
                 column = index % 2
 
-                self.students[macID] = (studentFrame, label, icon)
-                studentFrame.grid(row=row, column=column, pady=5, padx=3, sticky='nsw')
+                self.students[macID] = student_frame
+                student_frame.grid(row=row, column=column, pady=5, padx=3, sticky='nsw')
         self._parent_canvas.yview_moveto(0)
         
     def update_student(self, macID, scan_time, status):
-        studentFrame, label, icon = self.students.get(macID)
-        name = label.cget("text").split(":")[0]
+        studentFrame = self.students.get(macID)
         color, img, padx, pady = self.status_dict.get(status if status in self.status_dict else 0)
-        studentFrame.configure(fg_color = color)
-        label.configure(text= f"{name}: {timeConvert(scan_time) if scan_time is not None and scan_time != -1 else ('Present' if status == 2 else ('Tardy' if status == 1 else 'Absent'))}")
-        icon.pack_forget()
-        icon.configure(image = img)
-        icon.pack(padx=padx,pady=pady,side='right')
+        studentFrame.update_student_frame(macID, scan_time, status, color, img, padx, pady)
             
     def update_title(self):
         self.configure(label_text=self.period_name)
