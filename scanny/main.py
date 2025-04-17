@@ -348,8 +348,8 @@ def checkIN():
                                 window.after(0, lambda: warning_confirmation.config('no active schedule'))
                         else: #CREATE NEW STUDENT ENTRY BECAUSE THEY ARE NOT IN MASTER DATABASE
                             #GET STUDENT DATA WITH POP UP
-                            getStudentInfoFrame.setMACID(ID)
-                            window.after(0, lambda: tabSwap(6))
+                            window.after(0, lambda i0 = ID: getStudentInfoFrame.setMACID(i0))
+                            tabSwap(6)
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
                     handle_settings_edit(ID, reset_oldMACID)
                 sleep_ms(100)
@@ -2394,7 +2394,7 @@ def tabSwap(newTAB):
             start_timeout()
         elif newTAB == 6: #DISPLAY STUDENT INFO FRAME
             window.after(0, lambda: spinning_image.stop_spinning())
-            getStudentInfoFrame.update_return(currentTAB)
+            window.after(0, lambda: getStudentInfoFrame.update_return(currentTAB))
             window.after(0, lambda: getStudentInfoFrame.place(x=0,y=0))
             window.after(0, lambda: getStudentInfoFrame.lift())
             start_timeout()
