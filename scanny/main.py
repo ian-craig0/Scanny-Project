@@ -131,8 +131,7 @@ def getAttendance(time, period_ID):
 
 def handle_settings_edit(ID, reset_oldMACID):
     """Runs on the main thread - safe for GUI operations"""
-
-    if warning_confirmation.current_key == "reset ID" and warning_confirmation.winfo_ismapped():
+    if warning_confirmation.get_current_key() == "reset ID":
         # Database query can stay here if fast, or move to background thread
         student_exists = execute_query(
             "SELECT first_name FROM student_names WHERE macID = %s", (ID,), True)
@@ -141,21 +140,21 @@ def handle_settings_edit(ID, reset_oldMACID):
             firstname, lastname = getFirstLastName(ID)
             warning_confirmation.warning_confirmation_dict['reset ID fail'][1] = \
                 f"*This ID is already assigned to {firstname} {lastname}.*"
-            warning_confirmation.config("reset ID fail")
+            window.after(0, lambda: warning_confirmation.config("reset ID fail"))
         else:
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
             execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (ID, reset_oldMACID), False, False)
-            window.after(0, lambda: refresh_teacher_frame(firstname, lastname))
+            refresh_teacher_frame(firstname, lastname)
             
-    elif currentTAB != 6:
+    elif currentTAB != 6 and warning_confirmation.get_current_key() != "reset ID success":
         if execute_query("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
             window.after(0, lambda i0 = ID: editStudentData(i0))
 
 def refresh_teacher_frame(firstname, lastname):
     warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
-    warning_confirmation.config("reset ID success")
-    teacherFrame.period_selected(teacherFrame.period_menu.get())
+    window.after(0, lambda: warning_confirmation.config("reset ID success"))
+    window.after(0, lambda: teacherFrame.period_selected(teacherFrame.period_menu.get()))
 
 def close_success_scan():
     time.sleep(2)
@@ -351,7 +350,7 @@ def checkIN():
                             getStudentInfoFrame.setMACID(ID)
                             window.after(0, lambda: tabSwap(6))
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
-                    window.after(0, lambda i0 = ID, i1 = reset_oldMACID: handle_settings_edit(i0, i1))
+                    handle_settings_edit(ID, reset_oldMACID))
                 sleep_ms(100)
             else:
                 sleep_ms(100)
@@ -1158,7 +1157,7 @@ class setupClass(ctk.CTkFrame):
         #delete schedule (it should cascade in DB and delete the schedule, the periods, and every student's registration to that period, and each scan in for each period in the schedule)
         execute_query("delete from schedules where schedule_ID = %s", (schedule_ID,), False, False)
         self.populate_schedule_list()
-        hide_popup(warning_confirmation)
+        warning_confirmation.close_popup()
 
 
 
@@ -1177,7 +1176,7 @@ class setupClass(ctk.CTkFrame):
         teacherFrame.update_period_menu()
         teacherFrame.period_selected(teacherFrame.period_menu.get())
         #close check popup
-        hide_popup(warning_confirmation)
+        warning_confirmation.close_popup()
 
     def display_SA_success(self, decision, inserted, overlap, name):
         if inserted:
@@ -3349,17 +3348,24 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.no_button.grid(sticky='w', row=0, column=1, padx=20)
 
         self.warning_image = ctk.CTkImage(Image.open(script_directory+r"/images/warning.png"),size=(int(sWidth/9),int(sWidth/9)))
-        self.exit_button = ctk.CTkButton(self.lower_frame, image = self.warning_image, text='', fg_color='#2B2B2B',border_color='white',border_width=4, command = lambda: hide_popup(self))
+        self.exit_button = ctk.CTkButton(self.lower_frame, image = self.warning_image, text='', fg_color='#2B2B2B',border_color='white',border_width=4, command = lambda: self.close_popup)
 
-    def delete_student(self, macID):
+    def get_current_key(self):
+        return self.current_key
+
+    def close_popup(self):
+        self.current_key == None
         hide_popup(self)
+    
+    def delete_student(self, macID):
+        self.close_popup()
         execute_query("""delete from student_periods where macID = %s""", (macID,), False, False)
         execute_query("""delete from student_names where macID = %s""", (macID,), False, False)
         execute_query("""delete from scans where macID = %s""", (macID,), False, False)
         teacherFrame.period_selected(teacherFrame.period_menu.get()) #RELOAD STUDENT LIST ON TEACHER FRAME
 
     def reset_display_password_menu(self):
-        hide_popup(self)
+        self.close_popup()
         teacherPWPopup.change_pw(False)
         teacherPWPopup.change_tab(3)
         teacherPWPopup.change_label('Enter Teacher Password:')
@@ -3382,7 +3388,7 @@ class warning_confirmation_class(ctk.CTkFrame):
             if no_command:
                 self.no_button.configure(command = no_command)
             else:
-                self.no_button.configure(command = lambda: hide_popup(self))
+                self.no_button.configure(command = lambda: self.close_popup)
         else:
             self.exit_button.pack(anchor='center')
         display_popup(self)
