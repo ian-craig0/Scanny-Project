@@ -147,7 +147,7 @@ def handle_settings_edit(ID, reset_oldMACID):
             execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (ID, reset_oldMACID), False, False)
             refresh_teacher_frame(firstname, lastname)
             
-    elif currentTAB != 6 and warning_confirmation.get_current_key() != "reset ID success":
+    elif currentTAB != 6 and not warning_confirmation.get_current_key():
         if execute_query("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
             window.after(0, lambda i0 = ID: editStudentData(i0))
 
