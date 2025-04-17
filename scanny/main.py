@@ -350,7 +350,7 @@ def checkIN():
                             getStudentInfoFrame.setMACID(ID)
                             window.after(0, lambda: tabSwap(6))
                 elif currentTAB == 4: #IF IN SETTINGS AND EDITING IS NOT DISPLAYED EDIT STUDENT
-                    handle_settings_edit(ID, reset_oldMACID))
+                    handle_settings_edit(ID, reset_oldMACID)
                 sleep_ms(100)
             else:
                 sleep_ms(100)
