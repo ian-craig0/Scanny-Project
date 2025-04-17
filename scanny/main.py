@@ -3348,7 +3348,7 @@ class warning_confirmation_class(ctk.CTkFrame):
         self.no_button.grid(sticky='w', row=0, column=1, padx=20)
 
         self.warning_image = ctk.CTkImage(Image.open(script_directory+r"/images/warning.png"),size=(int(sWidth/9),int(sWidth/9)))
-        self.exit_button = ctk.CTkButton(self.lower_frame, image = self.warning_image, text='', fg_color='#2B2B2B',border_color='white',border_width=4, command = lambda: self.close_popup)
+        self.exit_button = ctk.CTkButton(self.lower_frame, image = self.warning_image, text='', fg_color='#2B2B2B',border_color='white',border_width=4, command = lambda: self.close_popup())
 
     def get_current_key(self):
         return self.current_key
@@ -3388,7 +3388,7 @@ class warning_confirmation_class(ctk.CTkFrame):
             if no_command:
                 self.no_button.configure(command = no_command)
             else:
-                self.no_button.configure(command = lambda: self.close_popup)
+                self.no_button.configure(command = lambda: self.close_popup())
         else:
             self.exit_button.pack(anchor='center')
         display_popup(self)
