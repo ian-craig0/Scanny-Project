@@ -2394,7 +2394,7 @@ def tabSwap(newTAB):
             start_timeout()
         elif newTAB == 6: #DISPLAY STUDENT INFO FRAME
             window.after(0, lambda: spinning_image.stop_spinning())
-            window.after(0, lambda: getStudentInfoFrame.update_return(currentTAB))
+            window.after(0, lambda i0 = currentTAB: getStudentInfoFrame.update_return(i0))
             window.after(0, lambda: getStudentInfoFrame.place(x=0,y=0))
             window.after(0, lambda: getStudentInfoFrame.lift())
             start_timeout()
