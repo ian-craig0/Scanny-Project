@@ -146,13 +146,13 @@ def handle_settings_edit(ID, reset_oldMACID):
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
             execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (ID, reset_oldMACID), False, False)
-            window.after(0, lambda: refresh_teacher_frame())
+            window.after(0, lambda: refresh_teacher_frame(firstname, lastname))
             
     elif currentTAB != 6:
         if execute_query("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
             window.after(0, lambda i0 = ID: editStudentData(i0))
 
-def refresh_teacher_frame():
+def refresh_teacher_frame(firstname, lastname):
     warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
     warning_confirmation.config("reset ID success")
     teacherFrame.period_selected(teacherFrame.period_menu.get())
