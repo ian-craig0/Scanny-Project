@@ -1,4 +1,4 @@
-#SYSTEM IMPORTS
+ #SYSTEM IMPORTS
 import subprocess
 import os
 import threading
@@ -2393,10 +2393,10 @@ def tabSwap(newTAB):
             setupFrame.lift()
             start_timeout()
         elif newTAB == 6: #DISPLAY STUDENT INFO FRAME
-            spinning_image.stop_spinning()
+            window.after(0, lambda: spinning_image.stop_spinning())
             getStudentInfoFrame.update_return(currentTAB)
-            getStudentInfoFrame.place(x=0,y=0)
-            getStudentInfoFrame.lift()
+            window.after(0, lambda: getStudentInfoFrame.place(x=0,y=0))
+            window.after(0, lambda: getStudentInfoFrame.lift())
             start_timeout()
         elif newTAB == 7: #DISPLAY INTERNET MENU
             spinning_image.stop_spinning()
