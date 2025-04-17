@@ -145,7 +145,7 @@ def handle_settings_edit(ID, reset_oldMACID):
         else:
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
-            execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (new_id, old_id), False, False)
+            execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (ID, reset_oldMACID), False, False)
             window.after(0, lambda: refresh_teacher_frame())
             
     elif currentTAB != 6:
