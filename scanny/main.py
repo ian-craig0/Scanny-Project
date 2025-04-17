@@ -131,6 +131,7 @@ def getAttendance(time, period_ID):
 
 def handle_settings_edit(ID, reset_oldMACID):
     """Runs on the main thread - safe for GUI operations"""
+    global currentTAB
     if warning_confirmation.get_current_key() == "reset ID":
         # Database query can stay here if fast, or move to background thread
         student_exists = execute_query(
