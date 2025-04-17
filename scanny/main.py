@@ -150,7 +150,7 @@ def handle_settings_edit(ID, reset_oldMACID):
             
     elif currentTAB != 6 and not warning_confirmation.get_current_key():
         if execute_query("SELECT first_name FROM student_names WHERE macID = %s", (ID,), True):
-            window.after(0, lambda i0 = ID: editStudentData(i0))
+            editStudentData(ID)
 
 def refresh_teacher_frame(firstname, lastname):
     warning_confirmation.warning_confirmation_dict['reset ID success'][1] = f"*{firstname} {lastname}'s ID has been reset!*"
@@ -2468,8 +2468,8 @@ def update_buttons(new_state, popup = None):
 
 
 def editStudentData(id):
-    getStudentInfoFrame.setMACID(id)
-    getStudentInfoFrame.setStudentData()
+    window.after(0, lambda: getStudentInfoFrame.setMACID(id))
+    window.after(0, lambda: getStudentInfoFrame.setStudentData())
     tabSwap(6)
 
 def editAttendanceData(scan_ID, attendance, reason, macID, scan_time, period_ID):
