@@ -3355,7 +3355,7 @@ class warning_confirmation_class(ctk.CTkFrame):
         return self.current_key
 
     def close_popup(self):
-        self.current_key == None
+        self.current_key = None
         hide_popup(self)
     
     def delete_student(self, macID):
