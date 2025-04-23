@@ -146,6 +146,10 @@ def handle_settings_edit(ID, reset_oldMACID):
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
             execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (ID, reset_oldMACID), False, False)
+            period_IDs = execute_query("select period_ID from student_periods where macID = %s", (ID,))
+            for period_ID in period_IDs:
+                 frame = PeriodFrameManager.get_period(period_ID)
+                 frame.populate_students()
             refresh_teacher_frame(firstname, lastname)
             
     elif currentTAB != 6 and not warning_confirmation.get_current_key():
