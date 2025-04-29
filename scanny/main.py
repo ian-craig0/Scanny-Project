@@ -145,10 +145,10 @@ def handle_settings_edit(ID, reset_oldMACID):
         else:
             firstname, lastname = getFirstLastName(reset_oldMACID)
             # Schedule database write to run in background
+            period_IDs = execute_query("select period_ID from student_periods where macID = %s", (reset_oldMACID,))
             execute_query("UPDATE student_names SET macID = %s WHERE macID = %s", (ID, reset_oldMACID), False, False)
-            period_IDs = execute_query("select period_ID from student_periods where macID = %s", (ID,))
             for period_ID in period_IDs:
-                 frame = PeriodFrameManager.get_period(period_ID)
+                 frame = PeriodFrameManager.get_period(period_ID[0])
                  frame.populate_students()
             refresh_teacher_frame(firstname, lastname)
             
