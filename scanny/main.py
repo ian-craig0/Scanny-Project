@@ -1728,7 +1728,7 @@ class historyClass(ctk.CTkFrame):
                 # Move to the next column for a 2-column layout
                 col = (col + 1) % 2
             if len(filters) == 4 and len(variables) == 4:
-                newQuery = "select * from scans where " + " AND ".join(filters[:3])
+                newQuery = "SELECT s.scan_ID, s.macID, s.scan_date, s.scan_time, s.status, s.period_ID, s.reason, sn.first_name, sn.last_name, p.name FROM scans s JOIN student_names sn on s.macID = sn.macID JOIN periods p on s.period_ID = p.period_ID WHERE " + " AND ".join(filters[:3]) + " ORDER BY s.scan_date DESC"
                 newStudents = execute_query(newQuery, variables[:3])
                 if not newStudents:
                     add_button = ctk.CTkButton(self.scrollable_frame, height=35,
