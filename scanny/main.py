@@ -2675,7 +2675,7 @@ class StudentMenu(ctk.CTkFrame):
         if first_name and last_name and selected_periods:
             if not execute_query("select macID from student_names where first_name = %s and last_name = %s and macID != %s", (first_name, last_name, self.macID)): #if there is another student with the same name
                 old_periods = [entry[0] for entry in execute_query("select period_ID from student_periods where macID = %s", (self.macID,))]
-                update_periods = list(set(selected_periods) ^ set(old_periods))
+                update_periods = list(set(old_periods) | set(selected_periods))
 
                 if self.editing: #DELETE OLD STUDENT DATA IF ADDING NEW
                     execute_query("""delete from student_periods where macID = %s""", (self.macID,), False, False)
