@@ -113,7 +113,7 @@ echo ""
 #DOWNLOADING/UPDATING SCRIPT FROM GITHUB --------------------------------------------------------------------------------
 # GitHub repository and target directory
 REPO_URL="https://github.com/ian-craig0/Scanny-Project.git"
-REPO_DIR="Scanny-Project"  # Local clone directory
+REPO_DIR="/home/pi/Scanny-Project"  # Local clone directory
 TARGET_DIR="/home/pi/Desktop/scanny"  # Case-sensitive path!
 
 # Clone or update the repository
@@ -224,7 +224,7 @@ cat <<EOF > /home/pi/update.sh
 sudo systemctl stop kiosk.service
 
 REPO_URL="https://github.com/ian-craig0/Scanny-Project.git"
-REPO_DIR="Scanny-Project"  # Local clone directory
+REPO_DIR="/home/pi/Scanny-Project"  # Local clone directory
 TARGET_DIR="/home/pi/Desktop/scanny"  # Case-sensitive path!
 
 # Clone or update the repository
