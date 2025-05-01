@@ -49,7 +49,7 @@ echo ""
 #changing time zone
 TIMEZONE="America/Chicago"
 sudo timedatectl set-timezone "$TIMEZONE"
-echo "Time zone changed succcessfuly to America/Chicago"
+echo "Time zone changed successfuly to America/Chicago"
 echo ""
 
 #installing python libraries --------------------------------------------------------------------------------
