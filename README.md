@@ -1,9 +1,9 @@
 Scanny-Project
 
-Project Goal: To develop the code that will create the GUI interface for a device that will help track/manage the attendance of students who use RFID-tagged student IDs.
-This project is useful for attendance management in settings like school, work, etc, where the timing of arrival (and potentially later departure) is a necessary element to record for a group of people.
+Project Goal: To develop the code that will create the GUI for an app that will help track/manage the attendance of students who use RFID-tagged student IDs on a Raspberry Pi 4 system.
+This project is useful for attendance management in settings like school, work, etc, where the timing of arrival (and potentially later [in newer updates] departure) is a necessary element to record for a group of people.
 
-Currently, I only have a few things in this repository and they are far from organized:
+Currently, I only have a few things in this repository, and they are far from organized:
 1. The main.py file, which contains all of the code and structure for the GUI of my attendance management device, using CustomTkinter to run the GUI interactions.
 2. The install_test.sh file, which contains a shell script that will install and configure a Raspberry Pi 4 (on a specific OS installation, which I forgot) to function with my main.py Python script.
 3. The scanny-db.sql file, which contains the code for a template MySQL database that stores and manages all of the data for my GUI app (this is referenced inside the installation code to install the MySQL database during setup).
